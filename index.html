@@ -49,6 +49,20 @@ html.light .pack-card:hover {
   box-shadow:0 0 0 1px var(--y), 0 8px 24px rgba(0,0,0,.12);
 }
 html.light .dl-box { box-shadow:none; }
+html.light .surround-word { color:#111110; }
+
+/* Legal modal — light mode */
+html.light #legal-modal { background:rgba(0,0,0,.35); }
+html.light .legal-box {
+  background:#f5f3ef;
+  border-color:rgba(0,0,0,.08);
+  box-shadow:0 24px 80px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.06);
+}
+html.light .legal-header { border-bottom-color:rgba(0,0,0,.08); }
+html.light .legal-body::-webkit-scrollbar-thumb { background:rgba(0,0,0,.15); }
+html.light .legal-body {
+  scrollbar-color:rgba(0,0,0,.15) transparent;
+}
 
 /* Tuner section — force dark colors in light mode */
 html.light .tuner-eyebrow          { color:rgba(0,0,0,.45); }
@@ -69,6 +83,12 @@ html.light .tuner-tick.active .tuner-tick-freq { color:var(--y); }
 html.light #tuner-canvas           { filter: invert(1); }
 
 /* ─── BASE ──────────────────────────────────────── */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:auto;background:var(--bg)}
 body{
@@ -694,6 +714,12 @@ html.light .pack-card-body { background:rgba(255,255,255,.12); }
   position:relative; height:1px; background:rgba(255,255,255,.22);
   cursor:ew-resize; user-select:none; margin-bottom:14px;
 }
+/* Expanded hit area — invisible, no visual change */
+#tuner-rail::before {
+  content:''; position:absolute;
+  left:0; right:0;
+  top:-24px; bottom:-24px;
+}
 #tuner-handle {
   position:absolute; top:50%;
   transform:translate(-50%,-50%);
@@ -1148,29 +1174,51 @@ window.scrollTo(0, 0);
 // ──────────────────────────────────────────────────────────────────────────────
 function applyTheme(light) {
   document.documentElement.classList.toggle('light', light);
-  document.getElementById('icon-moon').style.display = light ? 'none'  : '';
-  document.getElementById('icon-sun' ).style.display = light ? ''      : 'none';
-  // Re-init wave model with dark-strand mode for light backgrounds
-  const container = document.getElementById('hero-wave');
-  if (container) {
-    container.innerHTML = '';
-    heroModel = new CircleWaveModel(container, {
-      transparent: true,
-      theme:        light ? 'light' : 'dark',
-      waveCount: 9, waveScale: 0.30, glowStrength: 0.68, circleWeight: 0.55,
-      scrollSpeedMin: 0.08, scrollSpeedMax: 1.4,
-      scrollAmpMin: 0.5,   scrollAmpMax: 2.2,
-      interactionEnabled: true, interactStrength: 1.2,
-      interactRadius: 0.68, buildupRate: 0.09, cooldownRate: 0.12,
-    });
+  document.getElementById('icon-moon').style.display = light ? 'none' : '';
+  document.getElementById('icon-sun' ).style.display = light ? ''     : 'none';
+  // Update existing models in-place — no recreate, no size change
+  if (heroModel) {
+    heroModel.setTheme(light ? 'light' : 'dark');
     heroModel.setDarkStrands(light);
   }
+  if (_legalModel) _legalModel.setDarkStrands?.(light);
 }
 
 window.toggleTheme = function() {
-  const isLight = !document.documentElement.classList.contains('light');
-  localStorage.setItem('taskfm-theme', isLight ? 'light' : 'dark');
-  applyTheme(isLight);
+  const btn = document.getElementById('theme-toggle');
+  const doToggle = () => {
+    const isLight = !document.documentElement.classList.contains('light');
+    localStorage.setItem('taskfm-theme', isLight ? 'light' : 'dark');
+    applyTheme(isLight);
+  };
+
+  if (!btn || !document.startViewTransition) { doToggle(); return; }
+
+  const rect = btn.getBoundingClientRect();
+  const x = rect.left + rect.width  / 2;
+  const y = rect.top  + rect.height / 2;
+  const endRadius = Math.hypot(
+    Math.max(x, window.innerWidth  - x),
+    Math.max(y, window.innerHeight - y)
+  );
+
+  const transition = document.startViewTransition(doToggle);
+
+  transition.ready.then(() => {
+    document.documentElement.animate(
+      {
+        clipPath: [
+          `circle(0px at ${x}px ${y}px)`,
+          `circle(${endRadius}px at ${x}px ${y}px)`,
+        ],
+      },
+      {
+        duration: 500,
+        easing: 'ease-in-out',
+        pseudoElement: '::view-transition-new(root)',
+      }
+    );
+  });
 };
 
 // Apply saved theme immediately (before paint)
@@ -2278,10 +2326,8 @@ window.openLegalModal = function(type) {
   const wrap = document.getElementById('legal-wave-wrap');
   if (wrap && !_legalModel) {
     const isLight = document.documentElement.classList.contains('light');
-    _legalModel = new CircleWaveModel(wrap, {
-      bg: isLight ? '#f5f3ef' : '#0b0b0b',
-    });
-    if (isLight) _legalModel.setDarkStrands?.(true);
+    _legalModel = new CircleWaveModel(wrap, { transparent: true });
+    _legalModel.setDarkStrands?.(isLight);
   }
   if (_legalModel) _legalModel.triggerEmotion(0.25);
 
