@@ -201,6 +201,20 @@ html.light .orbit-ring { border-color:rgba(0,0,0,.12); }
   transition:opacity 0.5s ease;
   pointer-events:none;
 }
+@keyframes modelGlowFade {
+  0%   { filter: drop-shadow(0 0 28px rgba(245,194,24,.90))
+                 drop-shadow(0 0 60px rgba(245,194,24,.50))
+                 drop-shadow(0 0 110px rgba(245,194,24,.22)); }
+  35%  { filter: drop-shadow(0 0 22px rgba(245,194,24,.70))
+                 drop-shadow(0 0 50px rgba(245,194,24,.35))
+                 drop-shadow(0 0 90px  rgba(245,194,24,.14)); }
+  100% { filter: drop-shadow(0 0  0px rgba(245,194,24,0))
+                 drop-shadow(0 0  0px rgba(245,194,24,0))
+                 drop-shadow(0 0  0px rgba(245,194,24,0)); }
+}
+#hero-wave.glow-appear {
+  animation: modelGlowFade 3.2s cubic-bezier(0.16,1,0.3,1) forwards;
+}
 /* Ring 1 and inner icons fade out when model appears */
 #orbitRing1        { transition:opacity 0.5s ease; }
 .orbit-icon-inner  { transition:opacity 0.4s ease; }
@@ -238,7 +252,7 @@ html.light .orbit-ring { border-color:rgba(0,0,0,.12); }
 .surround-word {
   position:fixed; z-index:4;
   font-family:var(--mono); font-size:clamp(20px,3vw,52px);
-  font-weight:800; letter-spacing:-.025em; color:var(--y);
+  font-weight:800; letter-spacing:-.025em; color:#ffffff;
   white-space:nowrap; pointer-events:none;
   opacity:0;
   transition:opacity .5s cubic-bezier(0.25,0.46,0.45,0.94),
@@ -878,7 +892,6 @@ html.light .legal-close:hover { color:#111110; }
 <div id="topbar">
   <div class="logo">TASK<em>·</em>FM</div>
   <div style="display:flex;align-items:center;gap:12px">
-    <button id="lang-toggle" onclick="toggleLang()" aria-label="Toggle language">ع</button>
     <button id="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
       <svg id="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
       <svg id="icon-sun"  width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
@@ -1731,6 +1744,16 @@ function setStage(newStage, dir) {
     _modelOpacityTimer = setTimeout(() => {
       if (!_waveEl) _waveEl = document.getElementById('hero-wave');
       if (_waveEl) _waveEl.style.opacity = modelNow ? '1' : '0';
+      // First appearance: play sound + trigger glow
+      if (modelNow && !window._modelAppearSoundPlayed) {
+        window._modelAppearSoundPlayed = true;
+        _playModelAppearSound();
+        if (_waveEl) {
+          _waveEl.classList.remove('glow-appear');
+          void _waveEl.offsetWidth; // force reflow to restart animation
+          _waveEl.classList.add('glow-appear');
+        }
+      }
       const ring1 = document.getElementById('orbitRing1');
       if (ring1) ring1.style.opacity = modelNow ? '0' : '1';
       document.querySelectorAll('.orbit-icon-inner').forEach(el => {
@@ -2430,6 +2453,9 @@ function initTuner(items) {
       handle.classList.remove('locked');
     }
     document.querySelectorAll('.tuner-tick').forEach((el, i) => el.classList.toggle('active', locked && i === ni));
+
+    // Radio audio hook — passes signal strength + locked state
+    if (window._radioOnSignal) window._radioOnSignal(sig, locked);
   }
 
   // ── Animated snap ─────────────────────────────────────────────────────────
@@ -2596,6 +2622,86 @@ window.toggleLang = function() {
 // BOOT
 // ──────────────────────────────────────────────────────────────────────────────
 
+// Synthesized model-appear sound — v3 "glow"
+// Warm harmonics that slowly bloom outward like expanding light.
+// Slow ease-in attack, harmonics enter progressively, long graceful decay.
+function _playModelAppearSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const t   = ctx.currentTime;
+
+    const master = ctx.createGain();
+    master.gain.value = 0.42;
+    master.connect(ctx.destination);
+
+    // Glow partial — slow bloom attack, then long decay
+    // Uses a 3-point ramp for ease-in feel (sluggish start → brightens)
+    function glow(freq, detune, delay, peak, attackDur, decayDur) {
+      const o = ctx.createOscillator();
+      o.type            = 'sine';
+      o.frequency.value = freq + detune;
+
+      // Gentle LFO tremolo — simulates the shimmering quality of light
+      const lfo  = ctx.createOscillator();
+      lfo.type            = 'sine';
+      lfo.frequency.value = 2.8;
+      const lfoG = ctx.createGain();
+      lfoG.gain.value = peak * 0.06; // depth: ±6% of peak — barely noticeable
+      lfo.connect(lfoG);
+
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0, t + delay);
+      // Ease-in: slow start, accelerates toward peak
+      g.gain.linearRampToValueAtTime(peak * 0.25, t + delay + attackDur * 0.55);
+      g.gain.linearRampToValueAtTime(peak,         t + delay + attackDur);
+      // Decay: long, graceful exponential fade
+      g.gain.exponentialRampToValueAtTime(0.0001,  t + delay + attackDur + decayDur);
+
+      lfoG.connect(g.gain); // tremolo modulates on top
+
+      o.connect(g); g.connect(master);
+      lfo.start(t + delay);
+      o.start(t + delay);
+      o.stop(t + delay + attackDur + decayDur + 0.1);
+      lfo.stop(t + delay + attackDur + decayDur + 0.1);
+    }
+
+    //           freq   detune  delay  peak   attack  decay
+    // Fundamental — warmest, blooms first
+    glow(196,  0.0,  0.00, 0.26,  0.28,  3.2);
+    glow(196,  0.9,  0.00, 0.12,  0.30,  3.0); // twin — slight beating
+
+    // 2nd harmonic — follows 120ms later, slightly brighter
+    glow(392,  0.0,  0.12, 0.15,  0.24,  2.6);
+    glow(392,  0.6,  0.12, 0.07,  0.26,  2.3);
+
+    // 3rd harmonic — 220ms later, adds shimmer to the glow
+    glow(588,  0.0,  0.22, 0.08,  0.20,  1.8);
+
+    // 4th harmonic — 320ms later, top of the glow, fades fastest
+    glow(784,  0.0,  0.32, 0.04,  0.16,  1.2);
+
+    // Warm haze — bandpass noise in the 400–900Hz range
+    // Acts like the soft scatter of light — not noise, just warmth
+    const sr   = ctx.sampleRate;
+    const nbuf = ctx.createBuffer(1, Math.ceil(sr * 0.8), sr);
+    const nd   = nbuf.getChannelData(0);
+    for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+    const nSrc = ctx.createBufferSource();
+    nSrc.buffer = nbuf;
+    const nBPF = ctx.createBiquadFilter();
+    nBPF.type = 'bandpass'; nBPF.frequency.value = 600; nBPF.Q.value = 1.2;
+    const nGain = ctx.createGain();
+    nGain.gain.setValueAtTime(0, t);
+    nGain.gain.linearRampToValueAtTime(0.055, t + 0.18);
+    nGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.75);
+    nSrc.connect(nBPF); nBPF.connect(nGain); nGain.connect(master);
+    nSrc.start(t);
+
+    setTimeout(() => ctx.close(), 4500);
+  } catch(e) {}
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   applyAdminConfig();
   cacheSectionOffsets();
@@ -2666,6 +2772,412 @@ document.addEventListener('DOMContentLoaded', () => {
   // Hard fallback: reveal everything after 5 seconds regardless
   setTimeout(() => revealTargets.forEach(revealEl), 5000);
 });
+
+// ── RADIO INTERFERENCE AUDIO SYSTEM ──────────────────────────────────────────
+// Inspired by: static_radar_interference_01 — but softer, more refined.
+// Character: broadband noise + slow pulse AM (~0.5 Hz radar sweep feel).
+// ─────────────────────────────────────────────────────────────────────────────
+(function () {
+
+  // ── State ─────────────────────────────────────────────────────────────────
+  let _ctx       = null;
+  let _g         = {};
+  let _intensity = 0;
+  let _target    = 0;
+  let _inside    = false;
+  let _proximity = 0;
+  let _dwell     = 0;
+  let _lastTs    = null;
+
+  // ── Audio graph ───────────────────────────────────────────────────────────
+  function _boot() {
+    if (_ctx) return;
+    _ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+    const sr  = _ctx.sampleRate;
+
+    // Master limiter
+    const limiter = _ctx.createDynamicsCompressor();
+    limiter.threshold.value = -6;
+    limiter.knee.value      = 6;
+    limiter.ratio.value     = 4;
+    limiter.attack.value    = 0.003;
+    limiter.release.value   = 0.25;
+    limiter.connect(_ctx.destination);
+
+    const master = _ctx.createGain();
+    master.gain.value = 1;
+    master.connect(limiter);
+
+    // ── Shared white noise buffer (3 channels, different offsets) ─────────
+    // White noise is used here (unlike before) to match the reference's
+    // broadband, flat-spectrum character.
+    const bufLen  = sr * 5;
+    const mkBuf = (seed) => {
+      const buf = _ctx.createBuffer(1, bufLen, sr);
+      const d   = buf.getChannelData(0);
+      let s = seed;
+      for (let i = 0; i < bufLen; i++) {
+        // LCG for reproducible noise texture
+        s = (s * 1664525 + 1013904223) & 0xffffffff;
+        d[i] = (s / 0x80000000) - 1;
+      }
+      return buf;
+    };
+    const buf1 = mkBuf(0x1234);
+    const buf2 = mkBuf(0x5678);
+    const buf3 = mkBuf(0xABCD);
+
+    function mkSrc(buf, rate = 1, offset = 0) {
+      const s = _ctx.createBufferSource();
+      s.buffer = buf;
+      s.loop   = true;
+      s.playbackRate.value = rate;
+      s.start(0, offset % 5);
+      return s;
+    }
+
+    function mkOsc(type, freq) {
+      const o = _ctx.createOscillator();
+      o.type = type; o.frequency.value = freq; o.start();
+      return o;
+    }
+
+    function mkFilter(type, freq, Q = 0.5) {
+      const f = _ctx.createBiquadFilter();
+      f.type = type; f.frequency.value = freq; f.Q.value = Q;
+      return f;
+    }
+
+    // ── Pulse AM modulator ────────────────────────────────────────────────
+    // The defining character of the reference: slow ~0.48Hz amplitude sweep.
+    // DC offset (1.0) + LFO (±0.22) → gain oscillates 0.78..1.22.
+    // Applied to the main broadband noise layer only — gives radar-sweep feel
+    // without fully gating, keeping it soft.
+    function mkPulseAM(freq, depth) {
+      const am = _ctx.createGain();
+      am.gain.value = 0; // net = dc + lfo; controlled by intensity separately
+
+      const dc = _ctx.createConstantSource();
+      dc.offset.value = 1.0;
+      dc.start();
+      dc.connect(am.gain);
+
+      const lfoOsc   = mkOsc('sine', freq);
+      const lfoDepth = _ctx.createGain();
+      lfoDepth.gain.value = depth;
+      lfoOsc.connect(lfoDepth);
+      lfoDepth.connect(am.gain);
+
+      return am;
+    }
+
+    // ── Layer 1 — Broadband main body (white noise, wide spectrum) ────────
+    // This is the core of the radar-static character.
+    // HPF at 120Hz removes low rumble. LPF at 7kHz keeps it from being harsh.
+    // Pulse-AM modulated at 0.48Hz for the sweep feel.
+    {
+      const src  = mkSrc(buf1, 1.0, 0);
+      const hpf  = mkFilter('highpass',  120,  0.5);
+      const lpf  = mkFilter('lowpass',  7000,  0.4);
+
+      // Pulse AM: 0.48Hz, depth ±0.22 → subtle radar sweep
+      const am   = mkPulseAM(0.48, 0.22);
+      const gain = _ctx.createGain();
+      gain.gain.value = 0;
+      gain.connect(master);
+
+      src.connect(hpf); hpf.connect(lpf); lpf.connect(am); am.connect(gain);
+      _g.broad = gain;
+      _g.broadAM = am; // store to set DC base per-frame
+    }
+
+    // ── Layer 2 — Mid presence (bandpass noise, ~1–4 kHz) ─────────────────
+    // The reference has a strong mid-range character. This layer adds it
+    // without the harsh quality — filtered to a smooth band.
+    {
+      const src  = mkSrc(buf2, 0.8, 1.2);
+      const bpf  = mkFilter('bandpass', 2000, 2.5);
+      const lpf  = mkFilter('lowpass',  4000, 0.4);
+      const gain = _ctx.createGain();
+      gain.gain.value = 0;
+      gain.connect(master);
+      src.connect(bpf); bpf.connect(lpf); lpf.connect(gain);
+      _g.mid = gain;
+    }
+
+    // ── Layer 3 — Soft low rumble (low-passed noise, <300 Hz) ─────────────
+    // Grounds the sound. Not radar-like on its own — adds physical weight.
+    {
+      const src  = mkSrc(buf3, 0.5, 2.5);
+      const lpf  = mkFilter('lowpass', 280, 0.6);
+      const gain = _ctx.createGain();
+      gain.gain.value = 0;
+      gain.connect(master);
+      src.connect(lpf); lpf.connect(gain);
+      _g.rumble = gain;
+    }
+
+
+    // ── Layer 5 — High shimmer (very narrow bandpass, ~6 kHz) ────────────
+    // Appears only at high intensity. Like a distant carrier frequency.
+    {
+      const src  = mkSrc(buf1, 1.6, 3.1);
+      const bpf  = mkFilter('bandpass', 6200, 9);
+      const gain = _ctx.createGain();
+      gain.gain.value = 0;
+      gain.connect(master);
+      src.connect(bpf); bpf.connect(gain);
+      _g.shimmer = gain;
+    }
+  }
+
+  // ── Apply intensity ───────────────────────────────────────────────────────
+  function _apply(i) {
+    if (!_ctx) return;
+    const t  = _ctx.currentTime;
+    const tc = 0.09;
+
+    // Layer 1 — broad: on from 0%, max 0.042
+    // The AM node's DC is 1.0 already. We control intensity via the output gain.
+    _g.broad.gain.setTargetAtTime(i * 0.042, t, tc);
+
+    // Layer 2 — mid: enters after 20%, max 0.022
+    _g.mid.gain.setTargetAtTime(Math.max(0, i - 0.20) / 0.80 * 0.022, t, tc);
+
+    // Layer 3 — rumble: enters after 10%, max 0.030
+    _g.rumble.gain.setTargetAtTime(Math.max(0, i - 0.10) / 0.90 * 0.030, t, tc);
+
+
+    // Layer 5 — shimmer: only above 60%, max 0.009
+    _g.shimmer.gain.setTargetAtTime(Math.max(0, i - 0.60) / 0.40 * 0.009, t, tc);
+  }
+
+  // ── Per-frame update loop ─────────────────────────────────────────────────
+  function _tick(ts) {
+    if (!_lastTs) _lastTs = ts;
+    const dt = Math.min(50, ts - _lastTs) / 1000;
+    _lastTs = ts;
+
+    const heroEl     = document.getElementById('hero-wave');
+    const modelShown = heroEl && parseFloat(heroEl.style.opacity || '0') > 0.5;
+
+    if (_inside && modelShown) {
+      _dwell = Math.min(10, _dwell + dt);
+    } else {
+      _dwell = Math.max(0, _dwell - dt * 1.8);
+    }
+
+    const buildFactor = Math.min(1, _dwell / 7);
+    const proxFactor  = 0.35 + 0.65 * _proximity;
+    _target = (_inside && modelShown)
+      ? (0.20 + 0.80 * buildFactor) * proxFactor
+      : 0;
+
+    const rate = _inside ? 0.035 : 0.020;
+    _intensity += (_target - _intensity) * rate * (dt * 60);
+    _intensity  = Math.max(0, Math.min(1, _intensity));
+
+    _apply(_intensity);
+
+    requestAnimationFrame(_tick);
+  }
+
+  // ── Mouse tracking ────────────────────────────────────────────────────────
+  document.addEventListener('mousemove', function (e) {
+    const heroEl = document.getElementById('hero-wave');
+    if (!heroEl) return;
+
+    if (!_ctx) _boot();
+    if (_ctx.state === 'suspended') _ctx.resume();
+
+    const rect = heroEl.getBoundingClientRect();
+    const cx   = rect.left + rect.width  / 2;
+    const cy   = rect.top  + rect.height / 2;
+    const R    = Math.min(rect.width, rect.height) * 0.38;
+
+    const dx   = e.clientX - cx;
+    const dy   = e.clientY - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    _inside    = dist <= R;
+    _proximity = _inside ? Math.max(0, 1 - dist / R) : 0;
+  });
+
+  document.addEventListener('mouseleave', function () {
+    _inside = false; _proximity = 0;
+  });
+
+  requestAnimationFrame(_tick);
+
+})();
+// ── END RADIO INTERFERENCE ────────────────────────────────────────────────────
+
+// ── RADIO TUNER AUDIO SYSTEM ──────────────────────────────────────────────────
+// Static noise plays when tuner is visible. Music crossfades in as signal locks.
+// One random song per session; refreshing picks a different one.
+// ─────────────────────────────────────────────────────────────────────────────
+(function () {
+
+  const SONGS = [
+    'sounds/radio/song-1.mp3',
+    'sounds/radio/song-2.mp3',
+    'sounds/radio/song-3.mp3',
+    'sounds/radio/song-4.mp3',
+    'sounds/radio/song-5.mp3',
+    'sounds/radio/song-6.mp3',
+    'sounds/radio/song-7.mp3',
+  ];
+
+  // ── Pick a song for this session (different from previous session) ──────────
+  const SONG_SRC = (function () {
+    const prev = sessionStorage.getItem('taskfm-radio-prev');
+    let idx;
+    do { idx = Math.floor(Math.random() * SONGS.length); }
+    while (SONGS.length > 1 && String(idx) === prev);
+    sessionStorage.setItem('taskfm-radio-prev', String(idx));
+    return SONGS[idx];
+  })();
+
+  // ── Internal state ─────────────────────────────────────────────────────────
+  let _ctx        = null;
+  let _staticGain = null;
+  let _musicGain  = null;
+  let _musicEl    = null;
+  let _musicReady = false;
+  let _visible    = false;   // tuner section in viewport
+  let _sig        = 0;       // current signal strength from tuner
+  let _locked     = false;   // handle is on a valid station
+
+  // ── Boot audio graph ───────────────────────────────────────────────────────
+  function _boot() {
+    if (_ctx) return;
+    _ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+    const sr = _ctx.sampleRate;
+
+    // ── Static: pink noise → lowpass → gain ───────────────────────────────
+    const nBuf = _ctx.createBuffer(2, sr * 6, sr);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = nBuf.getChannelData(ch);
+      let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+      for (let i = 0; i < d.length; i++) {
+        const w = Math.random() * 2 - 1;
+        b0 = 0.99886*b0 + w*0.0555179; b1 = 0.99332*b1 + w*0.0750759;
+        b2 = 0.96900*b2 + w*0.1538520; b3 = 0.86650*b3 + w*0.3104856;
+        b4 = 0.55000*b4 + w*0.5329522; b5 = -0.7616*b5 - w*0.0168980;
+        d[i] = (b0+b1+b2+b3+b4+b5+b6+w*0.5362) * 0.11;
+        b6 = w * 0.115926;
+      }
+    }
+    const nSrc = _ctx.createBufferSource();
+    nSrc.buffer = nBuf; nSrc.loop = true;
+
+    const nLPF = _ctx.createBiquadFilter();
+    nLPF.type = 'lowpass'; nLPF.frequency.value = 4000; nLPF.Q.value = 0.4;
+
+    _staticGain = _ctx.createGain();
+    _staticGain.gain.value = 0;
+
+    nSrc.connect(nLPF); nLPF.connect(_staticGain); _staticGain.connect(_ctx.destination);
+    nSrc.start();
+
+    // ── Music: HTMLAudioElement → MediaElementSource → gain ──────────────
+    _musicEl = new Audio(SONG_SRC);
+    _musicEl.loop          = true;
+    _musicEl.crossOrigin   = 'anonymous';
+    _musicEl.preload       = 'auto';
+
+    const mSrc = _ctx.createMediaElementSource(_musicEl);
+    _musicGain = _ctx.createGain();
+    _musicGain.gain.value = 0;
+    mSrc.connect(_musicGain); _musicGain.connect(_ctx.destination);
+
+    // Start at random position between 20%–70% of track
+    _musicEl.addEventListener('loadedmetadata', () => {
+      _musicEl.currentTime = _musicEl.duration * (0.20 + Math.random() * 0.50);
+      _musicEl.play().catch(() => {});
+      _musicReady = true;
+      _applyLevels(); // apply current signal now that music is ready
+    }, { once: true });
+    _musicEl.load();
+  }
+
+  // ── Apply static/music levels based on current signal ─────────────────────
+  function _applyLevels() {
+    if (!_ctx) return;
+    const t  = _ctx.currentTime;
+    const tc = 0.35; // crossfade time constant (~350ms)
+
+    // Static: plays whenever visible and NOT locked
+    // A tiny residual remains even when locked (analog imperfection)
+    const sLevel = _visible
+      ? (_locked ? 0.006 : 0.072)
+      : 0;
+    _staticGain.gain.setTargetAtTime(sLevel, t, tc);
+
+    // Music: ONLY when locked on a station
+    const mLevel = (_visible && _musicReady && _locked) ? 0.88 : 0;
+    _musicGain.gain.setTargetAtTime(mLevel, t, tc);
+  }
+
+  // ── Public hook — called by setPos every time handle moves ────────────────
+  window._radioOnSignal = function (sig, locked) {
+    _sig    = sig;
+    _locked = !!locked;
+
+    // Boot on first real interaction with the tuner
+    if (!_ctx) {
+      _boot();
+      // Fade static in immediately
+      setTimeout(() => {
+        if (_staticGain) {
+          _staticGain.gain.setTargetAtTime(0.072, _ctx.currentTime, 0.4);
+        }
+      }, 50);
+    } else if (_ctx.state === 'suspended') {
+      _ctx.resume();
+    }
+
+    _applyLevels();
+  };
+
+  // ── Intersection observer — start/stop static as section enters view ───────
+  // Starts static when user scrolls to tuner even before touching handle.
+  document.addEventListener('DOMContentLoaded', () => {
+    const section = document.getElementById('s-tuner') || document.getElementById('tuner-wrap');
+    if (!section) return;
+
+    const io = new IntersectionObserver((entries) => {
+      _visible = entries[0].isIntersecting;
+
+      if (_visible) {
+        // Try to boot audio — works if user has already interacted with page
+        if (!_ctx) {
+          try {
+            _boot();
+          } catch (e) {}
+        }
+        if (_ctx && _ctx.state === 'suspended') _ctx.resume();
+        // Fade static in gently when section enters viewport
+        if (_staticGain) {
+          _staticGain.gain.setTargetAtTime(0.065, _ctx.currentTime, 0.6);
+        }
+      } else {
+        // Fade everything out when section leaves viewport
+        if (_ctx) {
+          const t = _ctx.currentTime;
+          _staticGain.gain.setTargetAtTime(0, t, 0.4);
+          if (_musicGain) _musicGain.gain.setTargetAtTime(0, t, 0.4);
+        }
+      }
+    }, { threshold: 0.15 });
+
+    io.observe(section);
+  });
+
+})();
+// ── END RADIO TUNER AUDIO ─────────────────────────────────────────────────────
 </script>
 </body>
 </html>
