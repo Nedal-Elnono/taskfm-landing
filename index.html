@@ -1,0 +1,2671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TASK FM — Your checklist, alive.</title>
+  <meta property="og:title"       content="TASK FM — Your checklist, alive."/>
+  <meta property="og:description" content="Add tasks. Check them off. Hear what happens."/>
+  <meta property="og:image"       content="images/og.png"/>
+  <meta property="og:image:width"  content="2940"/>
+  <meta property="og:image:height" content="1602"/>
+  <meta property="og:type"        content="website"/>
+  <meta name="twitter:card"       content="summary_large_image"/>
+  <meta name="twitter:image"      content="images/og.png"/>
+  <meta name="twitter:title"      content="TASK FM — Your checklist, alive."/>
+  <meta name="twitter:description" content="Add tasks. Check them off. Hear what happens."/>
+  <link rel="icon" type="image/png" sizes="64x64"   href="images/favicon-64.png"/>
+  <link rel="icon" type="image/png" sizes="512x512"  href="images/favicon-512.png"/>
+  <link rel="apple-touch-icon"                       href="images/favicon-512.png"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+/* ─── TOKENS ─────────────────────────────────────── */
+:root {
+  --y:#F5C218; --yg:rgba(245,194,24,.18); --ys:rgba(245,194,24,.07); --yb:rgba(245,194,24,.30);
+  --bg:#000000; --bg2:#0d0d0d; --bg3:#111111; --bg4:#111111;
+  --t:#f0f0f0; --t2:#777; --t3:#333;
+  --br:rgba(255,255,255,.05); --br2:rgba(255,255,255,.09);
+  --mono:'JetBrains Mono',monospace; --sans:-apple-system,'SF Pro Display','SF Pro Text',BlinkMacSystemFont,system-ui,sans-serif;
+  --ease-smooth: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ease-out: cubic-bezier(0.0, 0.0, 0.2, 1);
+}
+
+/* ─── LIGHT MODE ────────────────────────────────── */
+html.light {
+  --bg:#f0eeea; --bg2:#e5e3df; --bg3:#d8d6d2; --bg4:#c4c2be;
+  --t:#111110; --t2:#5a5957; --t3:#9e9c9a;
+  --br:rgba(0,0,0,.07); --br2:rgba(0,0,0,.13);
+}
+html.light body { background:var(--bg); color:var(--t); }
+
+/* Wave model — dark strands handled via JS setDarkStrands(), no CSS filter needed */
+
+/* Reduce heavy shadows in light mode */
+html.light .app-window {
+  box-shadow:0 8px 24px rgba(0,0,0,.10);
+}
+html.light .pack-card:hover {
+  box-shadow:0 0 0 1px var(--y), 0 8px 24px rgba(0,0,0,.12);
+}
+html.light .dl-box { box-shadow:none; }
+
+/* Tuner section — force dark colors in light mode */
+html.light .tuner-eyebrow          { color:rgba(0,0,0,.45); }
+html.light #tuner-display-title    { color:#0a0a0a; }
+html.light #tuner-display-title.locked { color:var(--y); }
+html.light #tuner-display-sub      { color:rgba(0,0,0,.45); }
+html.light #tuner-display-sub.locked   { color:#0a0a0a; }
+html.light #tuner-readout          { color:rgba(0,0,0,.5); }
+html.light #tuner-readout.locked   { color:var(--y); }
+html.light #tuner-rail             { background:rgba(0,0,0,.18); }
+html.light #tuner-handle           { background:#0a0a0a; }
+html.light #tuner-handle.locked    { background:var(--y); box-shadow:0 0 14px rgba(245,194,24,.5); }
+html.light .tuner-tick-mark        { background:rgba(0,0,0,.18); }
+html.light .tuner-tick.active .tuner-tick-mark { background:var(--y); }
+html.light .tuner-tick-freq        { color:rgba(0,0,0,.35); }
+html.light .tuner-tick.active .tuner-tick-freq { color:var(--y); }
+/* Tuner canvas waveform — invert white strokes to dark */
+html.light #tuner-canvas           { filter: invert(1); }
+
+/* ─── BASE ──────────────────────────────────────── */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:auto;background:var(--bg)}
+body{
+  font-family:var(--sans);background:var(--bg);color:var(--t);
+  overflow-x:hidden;-webkit-font-smoothing:antialiased;
+  transition:background .3s ease, color .3s ease;
+}
+a{text-decoration:none;color:inherit}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
+
+/* ─── PRELOADER ─────────────────────────────────── */
+#preloader {
+  position:fixed;inset:0;z-index:9999;
+  pointer-events:all;
+  transition:opacity 0.12s ease;
+}
+#preloader.done { pointer-events:none; }
+#pre-canvas {
+  position:fixed;inset:0;
+  display:block;
+  width:100%;height:100%;
+}
+
+/* ─── TOPBAR ─────────────────────────────────────── */
+#topbar {
+  position:fixed;top:0;left:0;right:0;z-index:500;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:20px 40px;
+}
+.logo {
+  font-family:var(--mono);font-size:13px;font-weight:800;letter-spacing:.12em;
+  color:var(--t);
+}
+.logo em { color:var(--y);font-style:normal; }
+.nav-btn {
+  font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.06em;
+  padding:8px 18px;border-radius:6px;cursor:pointer;border:none;outline:none;
+  background:var(--y);color:#000;transition:all .2s;
+}
+.nav-btn:hover { transform:translateY(-1px);box-shadow:0 4px 20px var(--yg); }
+#theme-toggle {
+  background:none;border:1px solid var(--br2);border-radius:8px;
+  color:var(--t2);cursor:pointer;padding:7px 9px;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .2s;
+}
+#theme-toggle:hover { color:var(--t);border-color:var(--t3); }
+#lang-toggle {
+  background:none;border:1px solid var(--br2);border-radius:20px;
+  color:var(--t2);cursor:pointer;padding:5px 12px;
+  font-family:'Cairo',sans-serif;font-size:14px;font-weight:700;line-height:1;
+  transition:all .2s;
+}
+#lang-toggle:hover { border-color:var(--y);color:var(--y); }
+
+/* ─── ARABIC / RTL ─────────────────────────────── */
+html[lang="ar"] {
+  direction:rtl;
+  --sans:'Cairo',system-ui,sans-serif;
+}
+html[lang="ar"] body,
+html[lang="ar"] .section-label,
+html[lang="ar"] .section-title,
+html[lang="ar"] .hero-sub,
+html[lang="ar"] .dl-title,
+html[lang="ar"] .dl-sub,
+html[lang="ar"] .dl-note,
+html[lang="ar"] .nav-btn,
+html[lang="ar"] .btn-dl strong,
+html[lang="ar"] .btn-dl small,
+html[lang="ar"] footer,
+html[lang="ar"] .demo-hint,
+html[lang="ar"] .scroll-hint,
+html[lang="ar"] .idea-line1,
+html[lang="ar"] .we-added-text,
+html[lang="ar"] .surround-word,
+html[lang="ar"] .pack-name,
+html[lang="ar"] .task-card-name,
+html[lang="ar"] .check-text,
+html[lang="ar"] .tuner-eyebrow,
+html[lang="ar"] #tuner-display-title,
+html[lang="ar"] #tuner-display-sub,
+html[lang="ar"] .legal-body,
+html[lang="ar"] .modal-title,
+html[lang="ar"] .modal-sub { font-family:var(--sans)!important; letter-spacing:0!important; }
+html[lang="ar"] .section-label { letter-spacing:.05em!important; }
+html[lang="ar"] #packs-more { font-family:'Cairo',sans-serif!important; letter-spacing:0!important; }
+html[lang="ar"] #topbar { direction:rtl; }
+html[lang="ar"] footer { direction:rtl; }
+html[lang="ar"] .app-titlebar { direction:rtl; }
+html[lang="ar"] .task-card-header { direction:rtl; }
+html[lang="ar"] .check-item { direction:rtl; }
+
+/* ─── SCROLL SCENE 1 (hero → idea, 280vh sticky) ── */
+#scroll-scene-1 {
+  position:relative; height:350vh; background:var(--bg);
+}
+#scene-1-sticky {
+  position:sticky; top:0; height:100vh; overflow:visible;
+}
+
+/* Orbit stage — fills sticky scene */
+#orbit-stage {
+  position:absolute;inset:0;pointer-events:none;overflow:visible;
+}
+.orbit-ring {
+  position:absolute;border-radius:50%;
+  border:1px solid rgba(255,255,255,.13);
+  left:50%;top:50%;transform:translate(-50%,-50%);
+  pointer-events:none;
+}
+html.light .orbit-ring { border-color:rgba(0,0,0,.12); }
+.orbit-icon {
+  position:absolute;width:22px;height:22px;pointer-events:none;
+  opacity:.85;
+}
+.orbit-icon svg { display:block;width:100%;height:100%; }
+
+/* Wave model — fixed, GPU-composited. JS moves via transform only (no layout reflow) */
+#hero-wave {
+  position:fixed;
+  left:0;top:0;
+  width:465px;height:465px;
+  z-index:2;
+  opacity:0;
+  transform:translate(calc(50vw - 232.5px),calc(50vh - 232.5px));
+  will-change:transform;
+  transition:opacity 0.5s ease;
+  pointer-events:none;
+}
+/* Ring 1 and inner icons fade out when model appears */
+#orbitRing1        { transition:opacity 0.5s ease; }
+.orbit-icon-inner  { transition:opacity 0.4s ease; }
+
+/* ─── SCENE CONTENT — single centered stage ─────────── */
+#scene-content {
+  position:absolute; left:50%; top:50%;
+  transform:translate(-50%,-50%);
+  text-align:center; z-index:3;
+  width:min(700px, 90vw);
+}
+/* Every stage is absolutely stacked at center; only one visible */
+.stg {
+  position:absolute; left:0; right:0;
+  top:50%; transform:translateY(-50%);
+  opacity:0;
+  transition:opacity .13s ease, transform .13s ease;
+  pointer-events:none;
+}
+/* Hero stage visible from first paint — no wait, no fade */
+#stg-hero {
+  opacity:1;
+  pointer-events:auto;
+}
+
+/* WE ADDED — headline-level */
+.we-added-text {
+  font-family:var(--mono); font-size:clamp(32px,5.8vw,74px);
+  font-weight:800; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--t); line-height:1; margin:0;
+}
+
+/* ─── 4 SURROUND WORDS (fixed, around model center 50vw/50vh) ─── */
+/* model radius = 232px  |  gap = 40px  |  offset = 272px         */
+.surround-word {
+  position:fixed; z-index:4;
+  font-family:var(--mono); font-size:clamp(20px,3vw,52px);
+  font-weight:800; letter-spacing:-.025em; color:var(--y);
+  white-space:nowrap; pointer-events:none;
+  opacity:0;
+  transition:opacity .5s cubic-bezier(0.25,0.46,0.45,0.94),
+             transform .5s cubic-bezier(0.25,0.46,0.45,0.94);
+}
+/* TOP — centered, above model */
+#sw-top {
+  left:50%; bottom:calc(50vh + 262px);
+  transform:translateX(-50%) translateY(-14px);
+}
+#sw-top.sw-on { opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* RIGHT — right of model, vertically centered */
+#sw-right {
+  left:calc(50vw + 272px); top:50%;
+  transform:translateY(-50%) translateX(14px);
+}
+#sw-right.sw-on { opacity:1; transform:translateY(-50%) translateX(0); }
+
+/* BOTTOM — centered, below model */
+#sw-bottom {
+  left:50%; top:calc(50vh + 262px);
+  transform:translateX(-50%) translateY(14px);
+}
+#sw-bottom.sw-on { opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* LEFT — left of model, vertically centered */
+#sw-left {
+  right:calc(50vw + 272px); top:50%;
+  transform:translateY(-50%) translateX(-14px);
+}
+#sw-left.sw-on { opacity:1; transform:translateY(-50%) translateX(0); }
+
+/* Content sections sit above the floating wave model */
+#s-demo, #s-packs, #s-dl { position:relative; z-index:5; }
+/* Tuner: section stays below wave model (wave floats over canvas) but wrap content sits above */
+#s-tuner { position:relative; }
+footer   { position:relative; z-index:5; }
+
+.hero-title {
+  font-family:var(--mono);font-size:clamp(48px,9vw,108px);font-weight:800;
+  letter-spacing:.08em;line-height:1;color:var(--t);
+  user-select:none;
+}
+.hero-title em { color:var(--y);font-style:normal; }
+
+.hero-sub {
+  font-size:clamp(14px,1.6vw,17px);color:var(--t2);
+  margin-top:14px;line-height:1.65;letter-spacing:.01em;
+}
+
+.hero-cta {
+  display:flex;gap:12px;flex-wrap:wrap;justify-content:center;
+  margin-top:32px;
+}
+.btn-dl {
+  display:flex;align-items:center;gap:10px;
+  padding:13px 26px;border-radius:8px;cursor:pointer;
+  font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.04em;
+  border:none;outline:none;transition:all .25s;position:relative;overflow:hidden;
+  background:var(--y);color:#000;
+}
+.btn-dl::after{
+  content:'';position:absolute;inset:0;
+  background:rgba(255,255,255,.18);
+  transform:translateX(-110%);transition:transform .32s;
+}
+.btn-dl:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(245,194,24,.3)}
+.btn-dl:hover::after{transform:translateX(110%)}
+.btn-dl.ghost{background:transparent;color:var(--t);border:1px solid var(--br2)}
+.btn-dl.ghost:hover{border-color:var(--yb);color:var(--y);box-shadow:none}
+.btn-dl-icon{font-size:18px;line-height:1}
+.btn-dl-txt{text-align:left}
+.btn-dl-txt small{display:block;font-size:9px;opacity:.65;font-weight:500}
+.btn-dl-txt strong{display:block;font-size:13px}
+
+.scroll-hint {
+  margin-top:48px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.18em;
+  color:var(--t3);text-transform:lowercase;
+  animation:float-hint 3s ease-in-out infinite;
+}
+@keyframes float-hint{0%,100%{transform:translateY(0)}50%{transform:translateY(4px)}}
+
+/* ─── SECTIONS COMMON ───────────────────────────── */
+.section {
+  max-width:1100px;margin:0 auto;padding:140px 48px;
+}
+.divider {
+  width:100%;height:1px;
+  background:transparent;
+}
+
+/* ─── IDEA TEXT (inside scroll scene text layers) ── */
+.idea-line1 {
+  font-size:clamp(22px,3.5vw,44px);font-weight:700;
+  letter-spacing:-.025em;color:var(--t);line-height:1.2;
+}
+.idea-line2 {
+  margin-top:28px;
+  font-size:clamp(28px,5vw,72px);font-weight:800;
+  letter-spacing:-.03em;line-height:1.1;color:var(--t);
+}
+
+/* ─── SCENE BRIDGE — clean canvas after soul ────── */
+#scene-bridge {
+  height:80vh;
+  background:var(--bg);
+}
+
+/* ─── SECTION: DEMO ─────────────────────────────── */
+#s-demo {
+  padding:60px 48px 120px;
+}
+.demo-layout {
+  display:grid; grid-template-columns:1fr 1fr; gap:48px;
+  align-items:center; max-width:960px; margin:0 auto;
+}
+.demo-model-slot {
+  min-height:380px; display:flex; align-items:center; justify-content:center;
+}
+
+.demo-app-side {
+  width:100%;
+  opacity:1;transform:translateX(0);
+  transition:opacity .9s cubic-bezier(0.25,0.46,0.45,0.94),
+             transform .9s cubic-bezier(0.25,0.46,0.45,0.94);
+}
+.demo-app-side.rv{opacity:1;transform:translateX(0)}
+
+/* App UI — matches app screenshot */
+.app-window {
+  background:var(--bg2);border-radius:16px;overflow:hidden;
+  border:1px solid var(--br2);
+  box-shadow:0 40px 80px rgba(0,0,0,.6);
+  transition:box-shadow .4s;
+}
+.app-window.playing {
+  box-shadow:0 0 0 2px rgba(245,194,24,.5),0 40px 80px rgba(0,0,0,.6);
+}
+.app-titlebar {
+  background:var(--bg3);padding:14px 18px;
+  display:flex;align-items:center;gap:10px;
+  border-bottom:1px solid var(--br);
+}
+.traffic {display:flex;gap:6px}
+.tr-dot{width:11px;height:11px;border-radius:50%}
+.tr-dot.red{background:#FF5F57}
+.tr-dot.yellow{background:#FEBC2E}
+.tr-dot.green{background:#28C840}
+.app-title-text{
+  flex:1;text-align:center;
+  font-family:var(--mono);font-size:11px;color:var(--t2);font-weight:600;letter-spacing:.06em;
+}
+.app-wave-indicator{
+  display:flex;gap:2px;align-items:flex-end;height:10px;opacity:0;transition:opacity .3s;
+}
+.app-wave-indicator.on{opacity:1}
+.awi-bar{width:2px;border-radius:1px;background:var(--y);animation:awi-bounce .4s ease-in-out infinite alternate}
+.awi-bar:nth-child(1){height:3px}
+.awi-bar:nth-child(2){height:7px;animation-delay:.08s}
+.awi-bar:nth-child(3){height:5px;animation-delay:.16s}
+.awi-bar:nth-child(4){height:9px;animation-delay:.04s}
+.awi-bar:nth-child(5){height:4px;animation-delay:.12s}
+@keyframes awi-bounce{to{transform:scaleY(1.6)}}
+
+.app-body{padding:20px 18px 24px}
+
+.app-heading{
+  font-size:22px;font-weight:800;letter-spacing:-.02em;margin-bottom:18px;
+  color:var(--t);
+}
+
+/* Add task input area */
+.app-add{
+  display:flex;align-items:center;gap:8px;margin-bottom:14px;
+}
+.app-add-input{
+  flex:1;background:var(--bg3);border:1px solid var(--br2);border-radius:8px;
+  padding:9px 12px;font-family:var(--mono);font-size:12px;color:var(--t);
+  outline:none;transition:border-color .2s;
+}
+.app-add-input::placeholder{color:var(--t3)}
+.app-add-input:focus{border-color:var(--yb)}
+.app-add-btn{
+  background:var(--y);color:#000;border:none;border-radius:8px;
+  padding:9px 14px;font-family:var(--mono);font-size:12px;font-weight:700;
+  cursor:pointer;transition:all .2s;white-space:nowrap;
+}
+.app-add-btn:hover{transform:translateY(-1px);box-shadow:0 4px 14px var(--yg)}
+
+/* Task list */
+.task-list{display:flex;flex-direction:column;gap:6px}
+
+.task-card{
+  background:var(--bg2);border:1px solid var(--br);border-radius:10px;
+  overflow:hidden;transition:border-color .25s;cursor:pointer;
+}
+.task-card:hover{border-color:var(--br2)}
+.task-card.expanded{border-color:var(--br2)}
+
+.task-card-header{
+  display:flex;align-items:center;gap:10px;
+  padding:11px 14px;
+}
+.task-circle{
+  width:20px;height:20px;flex-shrink:0;
+  border:1.5px solid var(--t3);border-radius:50%;
+  position:relative;transition:all .25s;
+}
+.task-circle.done{background:var(--y);border-color:var(--y)}
+.task-circle.done::after{
+  content:'';position:absolute;inset:0;
+  background:url("data:image/svg+xml,%3Csvg viewBox='0 0 12 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2.5 6l2.5 2.5 5-5' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/10px no-repeat;
+}
+.task-card-name{
+  flex:1;font-size:13px;font-weight:600;color:var(--t);
+  transition:opacity .25s;
+}
+.task-card.done-card .task-card-name{opacity:.4;text-decoration:line-through}
+.task-count{
+  font-family:var(--mono);font-size:10px;
+  background:var(--bg3);color:var(--t2);
+  padding:2px 7px;border-radius:4px;
+  border:1px solid var(--br);
+}
+.task-expand-btn{
+  font-size:10px;color:var(--t3);transition:transform .25s;
+  width:16px;text-align:center;
+}
+.task-card.expanded .task-expand-btn{transform:rotate(180deg)}
+
+/* Checklist */
+.task-checklist{
+  display:none;padding:0 14px 12px 44px;
+  border-top:1px solid var(--br);
+  flex-direction:column;gap:0;
+}
+.task-card.expanded .task-checklist{display:flex}
+
+.check-item{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 0;cursor:pointer;
+  border-bottom:1px solid var(--br);
+  transition:opacity .2s;
+}
+.check-item:last-child{border-bottom:none}
+.check-item:hover{opacity:.8}
+.check-circle{
+  width:16px;height:16px;flex-shrink:0;
+  border:1.5px solid var(--t3);border-radius:50%;
+  position:relative;transition:all .25s;
+}
+.check-circle.done{background:var(--y);border-color:var(--y)}
+.check-circle.done::after{
+  content:'';position:absolute;inset:0;
+  background:url("data:image/svg+xml,%3Csvg viewBox='0 0 12 12' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2.5 6l2.5 2.5 5-5' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/9px no-repeat;
+}
+.check-text{font-size:12px;color:var(--t);flex:1;transition:opacity .25s,text-decoration .25s}
+.check-item.done .check-text{opacity:.4;text-decoration:line-through}
+.check-wave{
+  display:flex;gap:1.5px;align-items:flex-end;height:12px;flex-shrink:0;
+  opacity:0;transition:opacity .3s;
+}
+.check-item.sound-playing .check-wave{opacity:1}
+.cwb{width:2px;border-radius:1px;background:var(--y);animation:awi-bounce .4s ease-in-out infinite alternate}
+.cwb:nth-child(1){height:3px;animation-delay:0}
+.cwb:nth-child(2){height:7px;animation-delay:.1s}
+.cwb:nth-child(3){height:4px;animation-delay:.05s}
+.cwb:nth-child(4){height:9px;animation-delay:.15s}
+
+/* Add checklist item */
+.task-add-step{
+  padding:8px 0 0;
+  display:flex;align-items:center;gap:8px;
+}
+.add-step-input{
+  flex:1;background:transparent;border:none;outline:none;
+  font-size:12px;color:var(--t);font-family:var(--sans);
+  padding:2px 0;
+}
+.add-step-input::placeholder{color:var(--t3);font-size:11px}
+.add-step-btn{
+  font-family:var(--mono);font-size:11px;color:var(--y);
+  background:none;border:none;cursor:pointer;padding:2px 4px;
+  transition:opacity .2s;
+}
+.add-step-btn:hover{opacity:.7}
+
+.demo-hint{
+  font-family:var(--mono);font-size:11px;color:var(--t3);
+  margin-top:16px;text-align:center;letter-spacing:.04em;
+}
+
+/* ─── SECTION: PACKS ────────────────────────────── */
+#s-packs {
+  padding:260px 48px 120px;
+  text-align:center;
+}
+.section-label{
+  font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.22em;
+  text-transform:uppercase;color:var(--y);margin-bottom:14px;
+  opacity:1;transform:translateY(0);
+  transition:opacity .6s ease,transform .6s ease;
+}
+/* Sound Packs label — larger, acts as section entry point */
+#s-packs .section-label {
+  font-size:13px;letter-spacing:.20em;margin-bottom:22px;
+}
+.section-label.rv{opacity:1;transform:translateY(0)}
+.section-title{
+  font-size:clamp(28px,4vw,52px);font-weight:800;letter-spacing:-.03em;
+  line-height:1.1;margin-bottom:60px;
+  opacity:1;transform:translateY(0);
+  transition:opacity .7s ease .1s,transform .7s ease .1s;
+}
+.section-title.rv{opacity:1;transform:translateY(0)}
+
+.packs-row{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:20px;
+  max-width:860px;margin:0 auto;
+}
+@media(max-width:700px){.packs-row{grid-template-columns:1fr}}
+
+.pack-card{
+  border:1px solid var(--br2);border-radius:14px;
+  cursor:default;position:relative;overflow:hidden;
+  background:var(--bg2);height:300px;
+  transition:border-color .3s ease, box-shadow .3s ease, transform .35s var(--ease-smooth);
+  opacity:1;transform:translateY(0);
+}
+.pack-card.rv{opacity:1;transform:translateY(0)}
+.pack-card:nth-child(2){transition-delay:.1s}
+.pack-card:nth-child(3){transition-delay:.2s}
+
+.pack-card:hover{
+  border-color:var(--y);
+  box-shadow:0 0 0 1px var(--y), 0 24px 56px rgba(0,0,0,.55);
+  transform:translateY(-6px);
+}
+
+/* Waveform canvas — fills card, animates on hover */
+.pack-canvas{
+  position:absolute;inset:0;
+  width:100%;height:100%;
+  opacity:0;
+  transition:opacity .4s ease;
+  border-radius:14px;
+}
+.pack-card:hover .pack-canvas{ opacity:1; }
+
+/* Name/desc anchored at bottom with gradient */
+.pack-card-body{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  z-index:2;text-align:center;
+  background:rgba(0,0,0,.18);
+  border-radius:14px;
+  transition:opacity .3s ease;
+}
+html.light .pack-card-body { background:rgba(255,255,255,.12); }
+.pack-card:hover .pack-card-body { opacity:0; }
+.pack-name{
+  font-family:var(--mono);font-size:22px;font-weight:800;
+  letter-spacing:-.01em;color:var(--t);
+}
+
+/* ─── SECTION: DOWNLOAD ─────────────────────────── */
+#s-dl { padding:0 48px 80px; }
+.dl-box{
+  max-width:880px;margin:0 auto;
+  border:1px solid var(--br2);border-radius:20px;
+  padding:90px 60px;text-align:center;
+  background:var(--bg2);
+  opacity:1;transform:translateY(0);
+  transition:opacity .8s ease,transform .8s ease;
+}
+.dl-box.rv{opacity:1;transform:translateY(0)}
+.dl-title{
+  font-family:var(--mono);font-size:clamp(26px,4.5vw,52px);font-weight:800;
+  letter-spacing:-.035em;line-height:1.1;margin-bottom:12px;
+}
+.dl-sub{font-size:15px;color:var(--t2);margin-bottom:44px;}
+.dl-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;}
+.dl-note{margin-top:18px;font-family:var(--mono);font-size:11px;color:var(--t3);letter-spacing:.04em;}
+
+/* ─── SECTION: SIGNAL TUNER ─────────────────────── */
+#s-tuner {
+  padding:90px 0 0; position:relative; overflow:hidden; background:var(--bg);
+}
+#tuner-canvas {
+  position:absolute; inset:0; width:100%; height:100%;
+  pointer-events:none; display:block;
+}
+#tuner-wrap {
+  position:relative; z-index:3;
+  max-width:1000px; margin:0 auto;
+  padding:72px 64px 60px;
+  opacity:1; transform:translateY(0);
+  transition:opacity .8s ease, transform .8s ease;
+}
+#tuner-wrap.rv { opacity:1; transform:translateY(0); }
+
+/* Eyebrow */
+.tuner-eyebrow {
+  font-family:var(--mono); font-size:10px; font-weight:700;
+  letter-spacing:.22em; text-transform:uppercase;
+  color:rgba(255,255,255,.4); margin-bottom:36px;
+}
+
+/* Main display area */
+#tuner-display { margin-bottom:64px; min-height:110px; }
+#tuner-display-title {
+  font-family:var(--mono); font-size:clamp(40px,7.5vw,96px); font-weight:800;
+  letter-spacing:-.025em; line-height:1; color:#fff;
+  margin-bottom:14px; white-space:nowrap; overflow:hidden;
+  transition:color .35s ease;
+}
+#tuner-display-title.locked { color:var(--y); }
+#tuner-display-sub {
+  font-family:var(--mono); font-size:clamp(13px,1.8vw,17px);
+  letter-spacing:.02em; color:rgba(255,255,255,.38);
+  transition:color .35s ease;
+}
+#tuner-display-sub.locked { color:#fff; }
+
+/* Readout line */
+#tuner-readout {
+  text-align:center;
+  font-family:var(--mono); font-size:11px; font-weight:700;
+  letter-spacing:.14em; text-transform:uppercase;
+  color:rgba(255,255,255,.5); margin-bottom:16px;
+  transition:color .3s;
+}
+#tuner-readout.locked { color:var(--y); }
+
+/* Rail */
+#tuner-rail {
+  position:relative; height:1px; background:rgba(255,255,255,.22);
+  cursor:ew-resize; user-select:none; margin-bottom:14px;
+}
+#tuner-handle {
+  position:absolute; top:50%;
+  transform:translate(-50%,-50%);
+  width:2px; height:28px; background:#fff;
+  cursor:ew-resize; z-index:2;
+  transition:background .25s ease, height .25s ease, box-shadow .25s ease;
+}
+#tuner-handle.locked {
+  background:var(--y); height:38px;
+  box-shadow:0 0 14px rgba(245,194,24,.7);
+}
+
+/* Scale */
+#tuner-scale { display:flex; justify-content:space-between; }
+.tuner-tick {
+  display:flex; flex-direction:column; align-items:center;
+  gap:5px; cursor:pointer; flex:1;
+}
+.tuner-tick-mark {
+  width:1px; height:5px; background:rgba(255,255,255,.2);
+  transition:background .2s, height .2s;
+}
+.tuner-tick.active .tuner-tick-mark { background:var(--y); height:9px; }
+.tuner-tick-freq {
+  font-family:var(--mono); font-size:10px; letter-spacing:.05em;
+  color:rgba(255,255,255,.3); transition:color .2s;
+}
+.tuner-tick.active .tuner-tick-freq { color:var(--y); }
+
+/* ─── FOOTER ────────────────────────────────────── */
+footer{
+  padding:32px 48px;text-align:center;
+  border-top:1px solid var(--br);
+  font-family:var(--mono);font-size:12px;color:var(--y);letter-spacing:.05em;
+}
+.footer-author{
+  color:var(--y);text-decoration:none;
+  border-bottom:1px solid rgba(245,194,24,.35);
+  transition:border-color .2s;
+}
+.footer-author:hover{ border-color:var(--y); }
+
+/* ─── MODAL ─────────────────────────────────────── */
+#dl-modal{
+  position:fixed;inset:0;z-index:800;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.75);backdrop-filter:blur(18px);
+  opacity:0;pointer-events:none;transition:opacity .3s;
+}
+#dl-modal.open{opacity:1;pointer-events:all}
+.modal-box{
+  background:var(--bg2);border:1px solid var(--br2);border-radius:20px;
+  padding:48px 44px 40px;width:min(420px,92vw);
+  position:relative;
+  transform:scale(.92) translateY(12px);
+  transition:transform .4s cubic-bezier(.34,1.4,.64,1);
+  box-shadow:0 48px 100px rgba(0,0,0,.7);
+}
+#dl-modal.open .modal-box{transform:scale(1) translateY(0)}
+.modal-close{
+  position:absolute;top:16px;right:16px;
+  font-family:var(--mono);font-size:10px;font-weight:700;color:var(--t2);
+  background:var(--bg3);border:1px solid var(--br2);border-radius:6px;
+  padding:6px 10px;cursor:pointer;transition:all .2s;
+}
+.modal-close:hover{color:var(--t)}
+.modal-title{
+  font-family:var(--mono);font-size:22px;font-weight:800;
+  letter-spacing:-.02em;margin-bottom:8px;
+}
+.modal-sub{font-size:14px;color:var(--t2);margin-bottom:32px;line-height:1.55}
+.modal-btns{display:flex;flex-direction:column;gap:10px}
+.modal-btn{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 20px;border-radius:10px;
+  background:var(--bg3);border:1px solid var(--br2);
+  cursor:pointer;transition:all .2s;
+  font-family:var(--mono);font-size:13px;font-weight:700;
+  text-decoration:none;color:var(--t);
+}
+.modal-btn:hover{border-color:var(--yb);background:var(--ys)}
+.modal-btn.primary{background:var(--y);color:#000;border-color:var(--y)}
+.modal-btn.primary:hover{box-shadow:0 4px 18px var(--yg);transform:translateY(-1px)}
+.modal-btn-icon{font-size:20px;line-height:1}
+.modal-btn-text small{display:block;font-size:10px;opacity:.65;font-weight:500}
+.modal-btn-text strong{display:block;font-size:14px}
+
+/* ─── WAVEFORM PULSE (audio glow) ───────────────── */
+@keyframes audio-flash{0%{box-shadow:0 0 0 0 rgba(245,194,24,0)}35%{box-shadow:0 0 0 6px rgba(245,194,24,.35)}100%{box-shadow:0 0 0 0 rgba(245,194,24,0)}}
+.audio-flash{animation:audio-flash .55s ease-out forwards!important}
+@keyframes demo-win{0%,100%{transform:none}25%{transform:translateY(-5px) scale(1.015)}65%{transform:translateY(2px)}}
+.app-window.demo-win{animation:demo-win .65s cubic-bezier(.34,1.56,.64,1);box-shadow:0 0 0 2px var(--y),0 40px 80px rgba(0,0,0,.6)!important}
+
+/* ─── SCROLL REVEAL UTILITY ─────────────────────── */
+/* All .rv classes animate in when .rv is added by IntersectionObserver */
+
+/* ─── PRELOADER DONE — hide scrollbar during preload ─── */
+body.loading{overflow:hidden}
+
+/* ─── LEGAL MODAL ──────────────────────────────── */
+#legal-modal {
+  position:fixed;inset:0;z-index:8500;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.72);backdrop-filter:blur(20px);
+  opacity:0;pointer-events:none;transition:opacity .3s ease;
+}
+#legal-modal.open { opacity:1;pointer-events:all; }
+.legal-box {
+  position:relative;
+  width:min(580px,92vw);max-height:82vh;
+  background:#0b0b0b;border:1px solid rgba(255,255,255,.09);
+  border-radius:22px;
+  display:flex;flex-direction:column;
+  transform:translateY(28px) scale(.96);
+  transition:transform .38s cubic-bezier(.25,.46,.45,.94);
+  box-shadow:0 40px 100px rgba(0,0,0,.75),0 0 0 1px rgba(255,255,255,.04);
+}
+#legal-modal.open .legal-box { transform:translateY(0) scale(1); }
+
+/* Header */
+.legal-header {
+  display:flex;flex-direction:column;align-items:center;
+  padding:32px 32px 24px;
+  border-bottom:1px solid rgba(255,255,255,.06);
+  flex-shrink:0;
+}
+#legal-wave-wrap {
+  width:68px;height:68px;margin-bottom:10px;
+  border-radius:50%;overflow:hidden;
+}
+.legal-brand {
+  font-family:var(--mono);font-size:12px;font-weight:800;
+  letter-spacing:.13em;color:var(--t);
+}
+.legal-brand em { color:var(--y);font-style:normal; }
+
+/* Scrollable body */
+.legal-body {
+  flex:1;overflow-y:auto;
+  padding:32px 36px 40px;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.10) transparent;
+}
+.legal-body::-webkit-scrollbar { width:3px; }
+.legal-body::-webkit-scrollbar-thumb { background:rgba(255,255,255,.12);border-radius:2px; }
+
+/* Typography inside modal */
+.legal-body h2 {
+  font-family:var(--mono);font-size:17px;font-weight:800;
+  letter-spacing:-.01em;color:var(--t);margin-bottom:4px;
+}
+.legal-body .legal-date {
+  font-family:var(--mono);font-size:10px;color:var(--t2);
+  letter-spacing:.08em;margin-bottom:24px;
+}
+.legal-body p { font-size:14px;line-height:1.7;color:rgba(240,240,240,.75);margin-bottom:14px; }
+.legal-body h4 {
+  font-family:var(--mono);font-size:11px;font-weight:700;
+  letter-spacing:.10em;text-transform:uppercase;
+  color:var(--y);margin:22px 0 8px;
+}
+.legal-body ul { padding-left:18px;margin-bottom:14px; }
+.legal-body ul li { font-size:14px;line-height:1.7;color:rgba(240,240,240,.75);margin-bottom:4px; }
+.legal-body .legal-sign {
+  margin-top:28px;font-family:var(--mono);font-size:12px;
+  color:rgba(245,194,24,.7);letter-spacing:.04em;
+}
+.legal-body a { color:var(--y);text-decoration:none;border-bottom:1px solid rgba(245,194,24,.35); }
+.legal-body a:hover { border-color:var(--y); }
+
+/* Close button */
+.legal-close {
+  position:absolute;top:14px;right:14px;
+  font-family:var(--mono);font-size:10px;font-weight:700;
+  letter-spacing:.06em;color:var(--t2);
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);
+  border-radius:6px;padding:6px 11px;cursor:pointer;transition:all .2s;
+}
+.legal-close:hover { color:var(--t);background:rgba(255,255,255,.09); }
+html.light .legal-box { background:#f5f3ef;border-color:rgba(0,0,0,.10); }
+html.light .legal-body p,
+html.light .legal-body ul li { color:rgba(17,17,16,.75); }
+html.light .legal-body h2 { color:#111110; }
+html.light .legal-close { color:#5a5957;background:rgba(0,0,0,.05);border-color:rgba(0,0,0,.10); }
+html.light .legal-close:hover { color:#111110; }
+</style>
+</head>
+<body class="loading">
+
+<!-- ═══ PRELOADER ══════════════════════════════════ -->
+<div id="preloader">
+  <canvas id="pre-canvas"></canvas>
+</div>
+
+<!-- ═══ TOPBAR ════════════════════════════════════════ -->
+<div id="topbar">
+  <div class="logo">TASK<em>·</em>FM</div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <button id="lang-toggle" onclick="toggleLang()" aria-label="Toggle language">ع</button>
+    <button id="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+      <svg id="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg id="icon-sun"  width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    </button>
+    <button class="nav-btn" id="nav-download" onclick="openModal()" data-en="Download" data-ar="تحميل">Download</button>
+  </div>
+</div>
+
+<!-- ═══ SCROLL SCENE 1 (hero + idea — 280vh sticky) ══ -->
+<div id="scroll-scene-1">
+  <div id="scene-1-sticky">
+    <!-- Orbit rings (circles) + icons -->
+    <div id="orbit-stage">
+      <div class="orbit-ring" id="orbitRing1"></div>
+      <div class="orbit-ring" id="orbitRing2"></div>
+      <div class="orbit-ring" id="orbitRing3"></div>
+      <div class="orbit-ring" id="orbitRing4"></div>
+      <div class="orbit-ring" id="orbitRing5"></div>
+      <div class="orbit-ring" id="orbitRing6"></div>
+      <div class="orbit-ring" id="orbitRing7"></div>
+    </div>
+
+    <!-- Single centered content stage — all text swaps happen here -->
+    <div id="scene-content">
+
+      <!-- Stage 1: hero -->
+      <div class="stg" id="stg-hero">
+        <h1 class="hero-title">TASK<em>FM</em></h1>
+        <p class="hero-sub" id="hero-sub">Add tasks. Check them off. Hear what happens.</p>
+        <div class="scroll-hint" id="scroll-hint">↓&nbsp;&nbsp;scroll to feel it</div>
+      </div>
+
+      <!-- Stage 2: idea line -->
+      <div class="stg" id="stg-idea">
+        <p class="idea-line1" id="idea-line1">Every to-do app<br>does the same thing.</p>
+      </div>
+
+      <!-- Stage 3: WE ADDED alone -->
+      <div class="stg" id="stg-we-added">
+        <p class="we-added-text" id="we-added-text">WE ADDED</p>
+      </div>
+
+    </div>
+
+
+  </div>
+</div>
+
+<!-- Wave model (position:fixed — choreography JS moves it through sections) -->
+<div id="hero-wave"></div>
+
+<!-- 4 surround words — fixed, revealed one per scroll step around the model -->
+<div id="sw-top"    class="surround-word" data-en="sound"       data-ar="صوت">sound</div>
+<div id="sw-right"  class="surround-word" data-en="voice"       data-ar="شخصية">voice</div>
+<div id="sw-bottom" class="surround-word" data-en="personality" data-ar="روح">personality</div>
+<div id="sw-left"   class="surround-word" data-en="soul"        data-ar="هوية">soul</div>
+
+<!-- Bridge: clean canvas after "soul" — model alone before demo flows in -->
+<div id="scene-bridge"></div>
+
+<!-- ═══ SECTION: INTERACTIVE DEMO ═══════════════════════ -->
+<section id="s-demo">
+  <div style="text-align:center;margin-bottom:48px">
+    <p class="section-label" id="demo-label" data-en="Try it" data-ar="جربه">Try it</p>
+    <h2 class="section-title" style="margin-bottom:0" id="demo-title" data-en="Hear every action." data-ar="استمع لكل خطوة.">Hear every action.</h2>
+  </div>
+  <div class="demo-layout">
+    <!-- Left: wave model glides here when demo is active -->
+    <div class="demo-model-slot" id="demo-model-slot"></div>
+    <!-- Right: App UI -->
+    <div class="demo-app-side">
+      <div class="app-window" id="app-window">
+        <div class="app-titlebar">
+          <div class="traffic">
+            <div class="tr-dot red"></div>
+            <div class="tr-dot yellow"></div>
+            <div class="tr-dot green"></div>
+          </div>
+          <div class="app-title-text">My Tasks</div>
+          <div class="app-wave-indicator" id="app-wave-ind">
+            <div class="awi-bar"></div>
+            <div class="awi-bar"></div>
+            <div class="awi-bar"></div>
+            <div class="awi-bar"></div>
+            <div class="awi-bar"></div>
+          </div>
+        </div>
+        <div class="app-body">
+          <!-- Task list — read-only controlled demo -->
+          <div class="task-list" id="task-list"></div>
+          <div class="demo-hint" id="demo-hint" data-en="click each step · hear the difference" data-ar="اضغط على كل خطوة · استمع للفرق">click each step · hear the difference</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ═══ SECTION: SOUND PACKS ══════════════════════════ -->
+<section id="s-packs">
+  <p class="section-label" id="packs-label" data-en="Sound Packs" data-ar="حزم الصوت">Sound Packs</p>
+  <h2 class="section-title" id="packs-title" data-en="Pick your character." data-ar="اختر شخصيتك.">Pick your character.</h2>
+
+  <div class="packs-row">
+    <!-- Sisi -->
+    <div class="pack-card" data-pack="elsisi" data-img="images/elsisi.webp"
+         onmouseenter="hoverPlayPack('elsisi')" onmouseleave="stopHoverSound()">
+      <canvas class="pack-canvas"></canvas>
+      <div class="pack-card-body">
+        <div class="pack-name">Sisi</div>
+      </div>
+    </div>
+
+    <!-- Bahgat -->
+    <div class="pack-card" data-pack="bahgt" data-img="images/bahgt.jpg"
+         onmouseenter="hoverPlayPack('bahgt')" onmouseleave="stopHoverSound()">
+      <canvas class="pack-canvas"></canvas>
+      <div class="pack-card-body">
+        <div class="pack-name">Bahgat</div>
+      </div>
+    </div>
+
+    <!-- El Guyar -->
+    <div class="pack-card" data-pack="elguyar" data-img="images/elguyar.jpg"
+         onmouseenter="hoverPlayPack('elguyar')" onmouseleave="stopHoverSound()">
+      <canvas class="pack-canvas"></canvas>
+      <div class="pack-card-body">
+        <div class="pack-name">El Guyar</div>
+      </div>
+    </div>
+  </div>
+
+  <p id="packs-more" style="font-family:var(--mono);font-size:11px;color:var(--t3);margin-top:28px;letter-spacing:.04em"
+     data-en="More packs coming. Always free." data-ar="المزيد قادم. دائماً مجاناً.">
+    More packs coming. Always free.
+  </p>
+</section>
+
+<div class="divider"></div>
+
+<!-- ═══ SECTION: DOWNLOAD ════════════════════════════ -->
+<section id="s-dl">
+  <div class="dl-box">
+    <h2 class="dl-title" id="dl-title" data-en="Download TASK FM" data-ar="حمّل TASK FM">Download TASK FM</h2>
+    <p class="dl-sub" id="dl-sub" data-en="No setup. No learning curve." data-ar="بدون إعداد. بدون تعقيد.">No setup. No learning curve.</p>
+    <div class="dl-btns">
+      <button class="btn-dl" onclick="openModal()" style="font-size:13px;padding:15px 32px">
+        <span class="btn-dl-icon">⌘</span>
+        <span class="btn-dl-txt">
+          <small id="dl-mac-small" data-en="Download for" data-ar="حمّل لـ">Download for</small>
+          <strong>macOS</strong>
+        </span>
+      </button>
+      <button class="btn-dl ghost" onclick="openModal()" style="font-size:13px;padding:15px 32px">
+        <span class="btn-dl-icon">⊞</span>
+        <span class="btn-dl-txt">
+          <small id="dl-win-small" data-en="Download for" data-ar="حمّل لـ">Download for</small>
+          <strong>Windows</strong>
+        </span>
+      </button>
+    </div>
+    <p class="dl-note" id="dl-note" data-en="Free to download · macOS 12+ · Windows 10+" data-ar="مجاني للتحميل · macOS 12+ · Windows 10+">Free to download · macOS 12+ · Windows 10+</p>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ═══ SECTION: SIGNAL TUNER ════════════════════════ -->
+<section id="s-tuner">
+  <!-- Full-section waveform canvas -->
+  <canvas id="tuner-canvas"></canvas>
+
+  <div id="tuner-wrap">
+    <p class="tuner-eyebrow" id="tuner-eyebrow" data-en="Contact" data-ar="تواصل">Contact</p>
+
+    <!-- Scrambling / locked display -->
+    <div id="tuner-display">
+      <h2 id="tuner-display-title">——————————</h2>
+      <p  id="tuner-display-sub">———————————————</p>
+    </div>
+
+    <!-- Readout + rail -->
+    <div id="tuner-readout">
+      <span id="tuner-freq-num">——.—</span> MHZ &nbsp;|&nbsp; SNR <span id="tuner-snr">—</span> DB
+    </div>
+    <div id="tuner-rail">
+      <div id="tuner-handle"></div>
+    </div>
+    <div id="tuner-scale"></div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══════════════════════════════════════ -->
+<footer>
+  <span id="footer-main">Made with sound in <a href="https://linktr.ee/nedal_nasser" target="_blank" class="footer-author">Nedal</a>'s mind</span>
+  &nbsp;&nbsp;·&nbsp;&nbsp;
+  <span id="footer-also">Check out also:</span> <a href="https://www.skamcards.store/" target="_blank" class="footer-author">skamcards</a>
+  &nbsp;&nbsp;·&nbsp;&nbsp;
+  <a href="#" class="footer-author" id="footer-privacy" onclick="openLegalModal('privacy');return false">Privacy</a>
+  &nbsp;&nbsp;
+  <a href="#" class="footer-author" id="footer-terms" onclick="openLegalModal('terms');return false">Terms</a>
+</footer>
+
+<!-- ═══ MODAL ════════════════════════════════════════ -->
+<div id="dl-modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal()">ESC</button>
+    <div class="modal-title">Download TASK FM</div>
+    <p class="modal-sub">Choose your platform. Ready to check things off.</p>
+    <div class="modal-btns">
+      <a class="modal-btn primary" href="TASKFM_macOS.dmg" id="macDlBtn" download>
+        <span class="modal-btn-icon">⌘</span>
+        <span class="modal-btn-text">
+          <small>Download for</small>
+          <strong>macOS (.dmg)</strong>
+        </span>
+      </a>
+      <a class="modal-btn" href="#" onclick="alert('Windows version coming soon!');return false">
+        <span class="modal-btn-icon">⊞</span>
+        <span class="modal-btn-text">
+          <small>Coming soon</small>
+          <strong>Windows</strong>
+        </span>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ LEGAL MODAL ══════════════════════════════════ -->
+<div id="legal-modal" onclick="if(event.target===this)closeLegalModal()">
+  <div class="legal-box">
+    <button class="legal-close" onclick="closeLegalModal()">ESC</button>
+    <div class="legal-header">
+      <div id="legal-wave-wrap"></div>
+      <div class="legal-brand">TASK<em>·FM</em></div>
+    </div>
+    <div class="legal-body" id="legal-body"></div>
+  </div>
+</div>
+
+<!-- ═══ SCRIPTS ═══════════════════════════════════════ -->
+<script type="module">
+import { CircleWaveModel } from './js/CircleWaveModel.js';
+
+// ──────────────────────────────────────────────────────────────────────────────
+// SCROLL RESTORATION — always open from top on refresh
+// ──────────────────────────────────────────────────────────────────────────────
+history.scrollRestoration = 'manual';
+window.scrollTo(0, 0);
+
+// ──────────────────────────────────────────────────────────────────────────────
+// THEME SYSTEM
+// ──────────────────────────────────────────────────────────────────────────────
+function applyTheme(light) {
+  document.documentElement.classList.toggle('light', light);
+  document.getElementById('icon-moon').style.display = light ? 'none'  : '';
+  document.getElementById('icon-sun' ).style.display = light ? ''      : 'none';
+  // Re-init wave model with dark-strand mode for light backgrounds
+  const container = document.getElementById('hero-wave');
+  if (container) {
+    container.innerHTML = '';
+    heroModel = new CircleWaveModel(container, {
+      transparent: true,
+      theme:        light ? 'light' : 'dark',
+      waveCount: 9, waveScale: 0.30, glowStrength: 0.68, circleWeight: 0.55,
+      scrollSpeedMin: 0.08, scrollSpeedMax: 1.4,
+      scrollAmpMin: 0.5,   scrollAmpMax: 2.2,
+      interactionEnabled: true, interactStrength: 1.2,
+      interactRadius: 0.68, buildupRate: 0.09, cooldownRate: 0.12,
+    });
+    heroModel.setDarkStrands(light);
+  }
+}
+
+window.toggleTheme = function() {
+  const isLight = !document.documentElement.classList.contains('light');
+  localStorage.setItem('taskfm-theme', isLight ? 'light' : 'dark');
+  applyTheme(isLight);
+};
+
+// Apply saved theme immediately (before paint)
+(function() {
+  const saved = localStorage.getItem('taskfm-theme');
+  if (saved === 'light') {
+    document.documentElement.classList.add('light');
+    // Icons updated after DOM ready
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('icon-moon').style.display = 'none';
+      document.getElementById('icon-sun' ).style.display = '';
+    });
+  }
+})();
+
+// ──────────────────────────────────────────────────────────────────────────────
+// SOUND SYSTEM
+// ──────────────────────────────────────────────────────────────────────────────
+
+const PACKS = {
+  bahgt: {
+    name: 'Bahgat',
+    hover:['sounds/bahgt/hover-1.mp3','sounds/bahgt/hover-2.mp3','sounds/bahgt/hover-3.mp3'],
+    new:  ['sounds/bahgt/new-1.mp3','sounds/bahgt/new-2.mp3','sounds/bahgt/new-3.mp3','sounds/bahgt/new-4.mp3','sounds/bahgt/new-5.mp3','sounds/bahgt/new-6.mp3'],
+    done: ['sounds/bahgt/done-1.mp3','sounds/bahgt/done-2.mp3','sounds/bahgt/done-3.mp3'],
+    step: ['sounds/bahgt/step-1.mp3'],
+  },
+  elsisi: {
+    name: 'Sisi',
+    hover:['sounds/elsisi/hover-1.mp3','sounds/elsisi/hover-2.mp3'],
+    new:  ['sounds/elsisi/new-1.mp4','sounds/elsisi/new-2.mp4','sounds/elsisi/new-3.mp4','sounds/elsisi/new-4.mp4','sounds/elsisi/new-5.mp4','sounds/elsisi/new-6.mp4','sounds/elsisi/new-7.mp4','sounds/elsisi/new-8.mp4','sounds/elsisi/new-9.mp4','sounds/elsisi/new-10.mp4','sounds/elsisi/new-11.mp4'],
+    done: ['sounds/elsisi/done-1.mp4','sounds/elsisi/done-2.mp4','sounds/elsisi/done-3.mp4','sounds/elsisi/done-4.mp4','sounds/elsisi/done-5.mp4','sounds/elsisi/done-6.mp4','sounds/elsisi/done-7.mp4'],
+    step: ['sounds/elsisi/step-1.mp4','sounds/elsisi/step-2.mp4','sounds/elsisi/step-3.mp4','sounds/elsisi/step-4.mp4','sounds/elsisi/step-5.mp4','sounds/elsisi/step-6.mp4','sounds/elsisi/step-7.mp4','sounds/elsisi/step-8.mp4'],
+  },
+  elguyar: {
+    name: 'El Guyar',
+    hover:['sounds/elguyar/hover-1.mp3','sounds/elguyar/hover-2.mp3'],
+    new:  ['sounds/elguyar/new-1.mp3','sounds/elguyar/new-2.mp3','sounds/elguyar/new-3.mp3','sounds/elguyar/new-4.mp3'],
+    done: ['sounds/elguyar/done-1.mp3','sounds/elguyar/done-2.mp3','sounds/elguyar/done-3.mp3','sounds/elguyar/done-4.mp3'],
+    step: ['sounds/elguyar/step-1.mp3','sounds/elguyar/step-2.mp3','sounds/elguyar/step-3.mp3','sounds/elguyar/step-4.mp3'],
+  },
+};
+
+let activePack = 'bahgt';
+let currentAudio = null;
+let lastSoundSrc = '';
+let heroModel = null;
+let _muted = false;
+
+// Unlock Web Audio on first user interaction (required on iOS/Safari)
+let _audioUnlocked = false;
+function _unlockAudio() {
+  if (_audioUnlocked) return;
+  _audioUnlocked = true;
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const buf = ctx.createBuffer(1, 1, 22050);
+  const src = ctx.createBufferSource();
+  src.buffer = buf; src.connect(ctx.destination); src.start(0);
+  ctx.resume().catch(() => {});
+  document.removeEventListener('click', _unlockAudio, true);
+  document.removeEventListener('touchstart', _unlockAudio, true);
+}
+document.addEventListener('click', _unlockAudio, true);
+document.addEventListener('touchstart', _unlockAudio, true);
+
+window.setActivePack = function(key) {
+  activePack = key;
+  document.querySelectorAll('.pack-card').forEach(c => {
+    c.classList.toggle('playing', c.dataset.pack === key);
+  });
+};
+
+function pickSound(type) {
+  const pack = PACKS[activePack] || PACKS.bahgt;
+  const arr = pack[type] || pack.done;
+  let src;
+  let tries = 0;
+  do {
+    src = arr[Math.floor(Math.random() * arr.length)];
+    tries++;
+  } while (src === lastSoundSrc && arr.length > 1 && tries < 8);
+  return src;
+}
+
+function playSound(type = 'done') {
+  if (_muted) return;
+  const src = pickSound(type);
+  lastSoundSrc = src;
+  if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; }
+  const a = new Audio(src);
+  a.volume = 0.85;
+  a.play().catch(() => {});
+  currentAudio = a;
+
+  // Pulse the persistent wave model
+  if (heroModel) heroModel.triggerEmotion(0.4);
+
+  // Visual indicator
+  const ind = document.getElementById('app-wave-ind');
+  if (ind) { ind.classList.add('on'); a.addEventListener('ended', () => ind.classList.remove('on')); }
+  const win = document.getElementById('app-window');
+  if (win) { win.classList.add('audio-flash'); setTimeout(() => win.classList.remove('audio-flash'), 600); }
+}
+
+let hoverAudio = null;
+window.hoverPlayPack = function(pack) {
+  if (_muted) return;
+  if (hoverAudio) { hoverAudio.pause(); hoverAudio.currentTime = 0; }
+  const arr = PACKS[pack]?.hover || [];
+  if (!arr.length) return;
+  const src = arr[Math.floor(Math.random() * arr.length)];
+  hoverAudio = new Audio(src);
+  hoverAudio.volume = 0.7;
+  hoverAudio.play().catch(() => {});
+};
+window.stopHoverSound = function() {
+  if (hoverAudio) {
+    hoverAudio.pause();
+    hoverAudio.currentTime = 0;
+    hoverAudio = null;
+  }
+};
+
+// ── Pack card waveform canvas ─────────────────────────────────────────────────
+function initPackCards() {
+  document.querySelectorAll('.pack-card').forEach(card => {
+    const canvas = card.querySelector('.pack-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    // Pre-load character image
+    const img = new Image();
+    img.src = card.dataset.img || '';
+
+    const NUM = 30;
+    const bars = Array.from({length: NUM}, (_, i) => ({
+      h: 0, target: 0,
+      phase: (i / NUM) * Math.PI * 3.5 + Math.random() * 0.4,
+      speed: 0.018 + Math.random() * 0.018
+    }));
+
+    let hovering = false, raf = null;
+
+    function resize() {
+      canvas.width  = card.offsetWidth;
+      canvas.height = card.offsetHeight;
+    }
+
+    function draw(ts) {
+      const t  = ts * 0.001;
+      const w  = canvas.width, h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const slot = w / NUM;
+      const bw   = slot * 0.52;
+
+      // Step 1 — draw bars as golden rects
+      ctx.save();
+      ctx.fillStyle = 'rgba(245,194,24,0.92)';
+      bars.forEach((b, i) => {
+        b.target = hovering
+          ? 0.12 + Math.abs(Math.sin(t * b.speed * Math.PI * 2 + b.phase)) * 0.78
+          : 0;
+        b.h += (b.target - b.h) * (hovering ? 0.07 : 0.05);
+        const bh = b.h * h * 0.88;
+        const x  = i * slot + (slot - bw) / 2;
+        const y  = h * 0.5 - bh * 0.5;
+        ctx.fillRect(Math.round(x), Math.round(y), Math.round(bw), Math.round(bh));
+      });
+      ctx.restore();
+
+      // Step 2 — clip face image to bar shapes (source-atop = draw image only over existing pixels)
+      if (img.complete && img.naturalWidth) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-atop';
+        ctx.globalAlpha = 0.78;
+        ctx.filter = 'grayscale(1)';
+        const iAR = img.naturalWidth / img.naturalHeight;
+        const cAR = w / h;
+        let iw, ih, ix, iy;
+        if (iAR > cAR) { ih = h; iw = ih * iAR; ix = (w - iw) / 2; iy = 0; }
+        else            { iw = w; ih = iw / iAR; ix = 0; iy = (h - ih) / 2; }
+        ctx.drawImage(img, ix, iy, iw, ih);
+        ctx.restore();
+      }
+
+      const moving = bars.some(b => Math.abs(b.h - b.target) > 0.003 || b.h > 0.005);
+      if (moving || hovering) raf = requestAnimationFrame(draw);
+      else raf = null;
+    }
+
+    card.addEventListener('mouseenter', () => {
+      hovering = true;
+      resize();
+      if (!raf) raf = requestAnimationFrame(draw);
+    });
+    card.addEventListener('mouseleave', () => {
+      hovering = false;
+      if (!raf) raf = requestAnimationFrame(draw);
+    });
+
+    resize();
+    window.addEventListener('resize', resize, { passive: true });
+  });
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// PRELOADER
+// ──────────────────────────────────────────────────────────────────────────────
+
+function runPreloader() {
+  const pre    = document.getElementById('preloader');
+  const canvas = document.getElementById('pre-canvas');
+  const DPR    = window.devicePixelRatio || 1;
+  const VW     = window.innerWidth;
+  const VH     = window.innerHeight;
+
+  canvas.width  = Math.round(VW * DPR);
+  canvas.height = Math.round(VH * DPR);
+  canvas.style.width  = VW + 'px';
+  canvas.style.height = VH + 'px';
+
+  const ctx = canvas.getContext('2d');
+  ctx.scale(DPR, DPR);   // once — all drawing in logical px
+
+  const cy = VH / 2;
+
+  const topbar = document.getElementById('topbar');
+  if (topbar) topbar.style.visibility = 'hidden';
+
+  // ── Easing ───────────────────────────────────────────────
+  function easeOut3(t)  { return 1 - Math.pow(1 - t, 3); }
+  function easeOut5(t)  { return 1 - Math.pow(1 - t, 5); }
+  function clamp01(v)   { return v < 0 ? 0 : v > 1 ? 1 : v; }
+  function ph(s, e, el) { return clamp01((el - s) / (e - s)); }
+
+  // ── Phase timings (ms) ───────────────────────────────────
+  // T1: silence ends → flatline fades in
+  // T2: flatline full → same wave breathes gently (approved)
+  // T3: breathing wave starts growing → dark zone expands around it
+  // T4: dark fills screen → done
+  const T1 = 80, T2 = 250, T3 = 550, T4 = 1100;
+
+  const STEPS = Math.ceil(VW / 2);
+
+  function waveY(xf, t) {
+    return Math.sin(xf * Math.PI * 2 * 2.2 + t * 1.8);
+  }
+
+  function easeInOut3(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2; }
+
+  const t0 = performance.now();
+  let rafId, done = false;
+
+  function tick(now) {
+    if (done) return;
+    const el = now - t0;
+    const t  = el * 0.001;
+
+    ctx.clearRect(0, 0, VW, VH);
+
+    // ── Phase fractions ───────────────────────────────────────
+    const pFlat = easeOut3(ph(T1, T2, el));       // flatline fades in
+    const pWake = easeOut3(ph(T2, T3, el));       // breathing amplitude rises
+    const pGrow = easeInOut3(ph(T3, T4, el));     // dark zone explodes outward
+
+    // The breathing wave amplitude (stays constant at VH*0.07 from T3 onward)
+    const breathAmp = VH * 0.07 * Math.min(1, pWake + pGrow);
+
+    // Extra wave amplitude on zone edges (wave gets more dramatic as it grows)
+    const waveAmp = breathAmp + VH * 0.18 * pGrow;
+
+    // Symmetric push: how far the zone edges move away from the wave center
+    const push = VH * 0.76 * pGrow;
+
+    // Zone boundaries follow the wave shape — same movement as the stroke
+    const topEdge = i => cy + waveAmp * waveY(i / STEPS, t) - push;
+    const botEdge = i => cy + waveAmp * waveY(i / STEPS, t) + push;
+
+    // ── 1. Yellow panels (crack in between is transparent → page shows through)
+    ctx.fillStyle = '#F5C218';
+
+    if (push < 0.5) {
+      // No crack yet — full yellow screen
+      ctx.fillRect(0, 0, VW, VH);
+    } else {
+      // Top yellow panel: 0 → topEdge
+      ctx.beginPath();
+      ctx.moveTo(0, -2);
+      ctx.lineTo(VW, -2);
+      for (let i = STEPS; i >= 0; i--)
+        ctx.lineTo((i / STEPS) * VW, topEdge(i));
+      ctx.closePath();
+      ctx.fill();
+
+      // Bottom yellow panel: botEdge → VH
+      ctx.beginPath();
+      ctx.moveTo(0, VH + 2);
+      ctx.lineTo(VW, VH + 2);
+      for (let i = STEPS; i >= 0; i--)
+        ctx.lineTo((i / STEPS) * VW, botEdge(i));
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // ── 3. Breathing wave stroke ──────────────────────────────
+    // The approved wave — visible against yellow, fades as dark zone grows
+    const strokeOp = clamp01(pFlat) * clamp01(1 - pGrow * 2.2);
+    if (strokeOp > 0.005) {
+      ctx.save();
+      ctx.globalAlpha = strokeOp;
+      ctx.strokeStyle = '#1a1a1a';
+      ctx.lineWidth   = 1.5;
+      ctx.lineJoin    = 'round';
+      ctx.beginPath();
+      for (let i = 0; i <= STEPS; i++) {
+        const x = (i / STEPS) * VW;
+        const y = cy + breathAmp * waveY(i / STEPS, t);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // ── Finish ────────────────────────────────────────────────
+    if (el >= T4) {
+      done = true;
+      cancelAnimationFrame(rafId);
+      pre.style.opacity = '0';
+      pre.classList.add('done');
+      document.body.classList.remove('loading');
+      if (topbar) topbar.style.visibility = '';
+      initStages();
+      setTimeout(() => { pre.style.display = 'none'; }, 130);
+      return;
+    }
+
+    rafId = requestAnimationFrame(tick);
+  }
+
+  rafId = requestAnimationFrame(tick);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// WAVE MODELS
+// ──────────────────────────────────────────────────────────────────────────────
+
+function initWaveModels() {
+  const heroContainer = document.getElementById('hero-wave');
+  if (!heroContainer) return;
+
+  const _isLight = document.documentElement.classList.contains('light');
+  heroModel = new CircleWaveModel(heroContainer, {
+    transparent: true,
+    theme:        _isLight ? 'light' : 'dark',
+    waveCount: 9,
+    waveScale: 0.30,
+    glowStrength: 0.68,
+    circleWeight: 0.55,
+    scrollSpeedMin: 0.08,
+    scrollSpeedMax: 1.4,
+    scrollAmpMin: 0.5,
+    scrollAmpMax: 2.2,
+    // Hover interaction
+    interactionEnabled: true,
+    interactStrength:   1.2,   // slightly richer presence response
+    interactRadius:     0.68,  // tighter hit area for precision
+    buildupRate:        0.09,  // smooth tension build (not sudden)
+    cooldownRate:       0.12,  // lingers a moment after mouse leaves
+  });
+  heroModel.setDarkStrands(_isLight);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// WAVE CHOREOGRAPHY — smooth lerp positioning through all page sections
+// ──────────────────────────────────────────────────────────────────────────────
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
+// Current interpolated state (x/y as fraction of vw/vh, size in px)
+let _ring1Size = 465; // updated in initOrbit to match ring 1's exact px size
+let _waveC = { x: 0.5, y: 0.5, size: 465 };
+let _lastScrollY = 0;
+let _rafScroll = null;
+let _orbitAngle = 0; // accumulates from scroll delta
+
+// Section offsets cached at load + resize
+let _sec = {};
+function cacheSectionOffsets() {
+  const demo  = document.getElementById('s-demo');
+  const packs = document.getElementById('s-packs');
+  const dl    = document.getElementById('s-dl');
+  const tuner = document.getElementById('s-tuner');
+
+  // Walk offsetParent chain for absolute position of demo-model-slot
+  const slot  = document.getElementById('demo-model-slot');
+  let slotAbsX = 0, slotAbsY = 0;
+  if (slot) {
+    let el = slot;
+    while (el) { slotAbsX += el.offsetLeft; slotAbsY += el.offsetTop; el = el.offsetParent; }
+    slotAbsX += slot.offsetWidth  / 2;
+    slotAbsY += slot.offsetHeight / 2;
+  }
+
+  _sec = {
+    demo:     demo  ? demo.offsetTop  : 9999,
+    packs:    packs ? packs.offsetTop : 9999,
+    dl:       dl    ? dl.offsetTop    : 9999,
+    tuner:    tuner ? tuner.offsetTop : 9999,
+    slotAbsX: slotAbsX || 0,
+    slotAbsY: slotAbsY || 0,
+  };
+}
+
+// Compute target { x, y, size } for current scroll position
+function computeWaveTarget() {
+  const scrollY = window.scrollY;
+  const vh = window.innerHeight;
+  const vw = window.innerWidth;
+  const { demo: dT, packs: pT, dl: dlT, tuner: tT } = _sec;
+
+  // Demo left-column center — use cached absolute position for off-screen accuracy
+  let demoX = _sec.slotAbsX ? _sec.slotAbsX / vw : Math.max(0.15, 0.5 - Math.min(vw, 960) / (4 * vw));
+  let demoY = _sec.slotAbsY ? Math.max(0.1, Math.min(0.9, (_sec.slotAbsY - scrollY) / vh)) : 0.5;
+
+  const dES = dT - vh * 0.2,  dEE = dT + vh * 0.05;  // enter demo — quick snap to left slot
+  const dXS = pT - vh * 0.3,  dXE = pT + vh * 0.15;  // exit demo — start well before packs
+  const pXS = dlT - vh * 0.6, pXE = dlT - vh * 0.1;  // exit packs
+  const tES = tT - vh * 0.1,  tEE = tT + vh * 0.5;   // grow in tuner section
+
+  if (scrollY < dES) return { x: 0.5,   y: 0.5,  size: _ring1Size };
+
+  if (scrollY < dEE) {
+    const t = easeInOutCubic((scrollY - dES) / (dEE - dES));
+    return { x: lerp(0.5, demoX, t), y: lerp(0.5, demoY, t), size: lerp(_ring1Size, 310, t) };
+  }
+
+  if (scrollY < dXS) return { x: demoX, y: demoY, size: 310 };
+
+  if (scrollY < dXE) {
+    const t = easeInOutCubic((scrollY - dXS) / (dXE - dXS));
+    return { x: lerp(demoX, 0.5, t), y: lerp(demoY, 0.17, t), size: lerp(310, 70, t) };
+  }
+
+  if (scrollY < pXS) return { x: 0.5, y: 0.17, size: 70 };
+
+  if (scrollY < pXE) {
+    const t = easeInOutCubic((scrollY - pXS) / (pXE - pXS));
+    return { x: 0.5, y: lerp(0.17, 0.20, t), size: lerp(70, 120, t) };
+  }
+
+  // After packs: stay small through dl section
+  if (scrollY < tES) return { x: 0.5, y: 0.20, size: 120 };
+
+  // Tuner section: grow from small/top to full-size/center (model above tuner, no z-index conflict)
+  if (scrollY < tEE) {
+    const t = easeInOutCubic((scrollY - tES) / (tEE - tES));
+    const yRest = (vh * 0.5 + 220) / vh; // fixed 220px below center
+    return { x: 0.5, y: lerp(0.20, yRest, t), size: lerp(120, _ring1Size, t) };
+  }
+
+  // Fixed 220px below viewport center — consistent across all screen sizes
+  return { x: 0.5, y: (vh * 0.5 + 220) / vh, size: _ring1Size };
+}
+
+// ── Stage-slide system ────────────────────────────────────────────────────────
+// 6 clear stages, each driven by scroll position within the 280vh scene.
+// Transitions: quick slide-out / slide-in (no slow fades).
+
+// 8 stages inside a 350vh scroll scene.
+// Stages 1-3: centered text. Stages 4-7: 4 surround words build up around model.
+// Stage 7 triggers scroll-lock; final scroll clears all → model alone (stage 8).
+const SCENE_STAGES = [
+  null,
+  { show: 'stg-hero',     surround: 0 },  // 1  TASK FM + buttons
+  { show: 'stg-idea',     surround: 0 },  // 2  Every to-do app…
+  { show: 'stg-we-added', surround: 0 },  // 3  WE ADDED alone
+  { show: null,           surround: 1 },  // 4  TOP word (sound) appears
+  { show: null,           surround: 2 },  // 5  RIGHT word (voice) appears
+  { show: null,           surround: 3 },  // 6  BOTTOM word (personality) appears
+  { show: null,           surround: 4 },  // 7  LEFT word (soul) — all 4 visible → latch
+  { show: null,           surround: 0 },  // 8  model alone — clean canvas
+];
+let _stage = 0;
+let _modelOpacityTimer = null;
+
+function getStage(scrollY) {
+  const p = scrollY / (3.5 * window.innerHeight); // 0–1 within 350vh scene
+  if (p < 0.10) return 1;
+  if (p < 0.25) return 2;
+  if (p < 0.40) return 3;
+  if (p < 0.54) return 4;
+  if (p < 0.65) return 5;
+  if (p < 0.78) return 6;
+  if (p < 0.92) return 7;
+  return 8; // soul fades, model alone — user scrolls naturally into sections
+}
+
+function _showStg(id, dir) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  // Cancel any pending show-RAF so a hide call can't be overridden
+  if (el._stgRaf) { cancelAnimationFrame(el._stgRaf); el._stgRaf = null; }
+  const from = dir > 0 ? 'translateY(calc(-50% + 22px))' : 'translateY(calc(-50% - 22px))';
+  el.style.transition    = 'none';
+  el.style.opacity       = '0';
+  el.style.transform     = from;
+  el.style.pointerEvents = 'none';
+  el._stgRaf = requestAnimationFrame(() => {
+    el._stgRaf = null;
+    el.style.transition    = 'opacity .13s ease, transform .13s ease';
+    el.style.opacity       = '1';
+    el.style.transform     = 'translateY(-50%)';
+    el.style.pointerEvents = 'auto';
+  });
+}
+function _hideStg(id, dir) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  // Cancel any pending show-RAF before hiding — prevents RAF from re-showing the element
+  if (el._stgRaf) { cancelAnimationFrame(el._stgRaf); el._stgRaf = null; }
+  const to = dir > 0 ? 'translateY(calc(-50% - 22px))' : 'translateY(calc(-50% + 22px))';
+  el.style.transition    = 'opacity .13s ease, transform .13s ease';
+  el.style.opacity       = '0';
+  el.style.transform     = to;
+  el.style.pointerEvents = 'none';
+}
+
+function setStage(newStage, dir) {
+  if (newStage === _stage) return;
+  // Once cleared to stage 8, don't let normal scroll pull back to 7
+  if (_stage === 8 && newStage === 7) return;
+
+  // If leaving stage 8 going back up, restore orbit-stage container that was faded by soul
+  if (_stage === 8 && newStage < 8) {
+    const orbit = document.getElementById('orbit-stage');
+    if (orbit) { orbit.style.transition = 'opacity 0.4s ease'; orbit.style.opacity = '1'; }
+  }
+
+  const prev = SCENE_STAGES[_stage] || {};
+  const next = SCENE_STAGES[newStage];
+
+  // ── Main centered content slot (stages 1-3) ──────────────────────────────────
+  if (next.show !== prev.show) {
+    if (prev.show) _hideStg(prev.show, dir);
+    if (next.show) _showStg(next.show, dir);
+  }
+
+  // ── 4 surround words (stages 4-7: cumulative, one per stage) ────────────────
+  const SW_IDS     = ['sw-top', 'sw-right', 'sw-bottom', 'sw-left'];
+  const prevCount  = (prev.surround) || 0;
+  const nextCount  = (next.surround) || 0;
+  if (nextCount !== prevCount) {
+    SW_IDS.forEach((id, i) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.classList.toggle('sw-on', i < nextCount);
+    });
+  }
+
+  // ── Model / ring-1 / inner-icon reveal at stage 4 boundary ───────────────────
+  const modelNow = newStage >= 4;
+  const modelWas = _stage  >= 4;
+  if (modelNow !== modelWas) {
+    // Debounce: clear any pending toggle, then apply after 80ms
+    // Prevents flicker when scroll bounces right at the stage boundary
+    clearTimeout(_modelOpacityTimer);
+    _modelOpacityTimer = setTimeout(() => {
+      if (!_waveEl) _waveEl = document.getElementById('hero-wave');
+      if (_waveEl) _waveEl.style.opacity = modelNow ? '1' : '0';
+      const ring1 = document.getElementById('orbitRing1');
+      if (ring1) ring1.style.opacity = modelNow ? '0' : '1';
+      document.querySelectorAll('.orbit-icon-inner').forEach(el => {
+        el.style.opacity = modelNow ? '0' : '1';
+      });
+      // When going back to stages 1-3, also restore orbit-stage container
+      // (may have been faded to opacity:0 by soul sequence)
+      if (!modelNow) {
+        const orbit = document.getElementById('orbit-stage');
+        if (orbit) { orbit.style.transition = 'opacity 0.4s ease'; orbit.style.opacity = '1'; }
+      }
+    }, 80);
+  }
+
+  // ── Stage 8: soul fades, orbit fades — scroll-driven, no lock ───────────────
+  if (newStage === 8 && _stage !== 8) {
+    _soulFadeBackground();
+  }
+  // Scrolling back from 8 → restore orbit
+  if (_stage === 8 && newStage < 8) {
+    _soulRestoreBackground();
+  }
+
+  _stage = newStage;
+  _stageChangedAt = performance.now();
+}
+
+function initStages() {
+  // Stage 1 appears instantly — no fade-in
+  const id = SCENE_STAGES[1].show;
+  const el = document.getElementById(id);
+  if (el) {
+    el.style.transition    = 'none';
+    el.style.opacity       = '1';
+    el.style.transform     = 'translateY(-50%)';
+    el.style.pointerEvents = 'auto';
+  }
+  _stage = 1;
+}
+
+function updateSceneText(scrollY, dir) {
+  setStage(getStage(scrollY), dir);
+}
+
+// RAF choreography loop — lerps wave position/size toward target every frame
+// Uses transform-only updates (GPU composited, zero layout reflow)
+const _WAVE_BASE = 465; // fixed element size in px — matches ring1 exactly (scale=1 at rest)
+let checkRevealOnScroll = null; // assigned after DOMContentLoaded sets up reveal targets
+let   _waveEl    = null; // cached DOM ref
+let   _waveHoverTarget = 1.0; // target hover scale (1.0 or 1.02)
+let   _waveHoverScale  = 1.0; // smoothly lerped toward target
+
+function choreographyTick() {
+  const target = computeWaveTarget();
+  const K = 0.10; // smoothness
+
+  _waveC.x    = lerp(_waveC.x,    target.x,    K);
+  _waveC.y    = lerp(_waveC.y,    target.y,    K);
+  _waveC.size = lerp(_waveC.size, target.size, K);
+  _waveHoverScale = lerp(_waveHoverScale, _waveHoverTarget, 0.06); // slow, silky
+
+  if (!_waveEl) {
+    _waveEl = document.getElementById('hero-wave');
+    if (_waveEl) {
+      _waveEl.style.pointerEvents = 'auto';
+      _waveEl.addEventListener('mouseenter', () => { _waveHoverTarget = 1.02; });
+      _waveEl.addEventListener('mouseleave', () => { _waveHoverTarget = 1.0;  });
+    }
+  }
+  if (_waveEl) {
+    const vw  = window.innerWidth, vh = window.innerHeight;
+    const tx  = (_waveC.x * vw  - _WAVE_BASE / 2) | 0;
+    const ty  = (_waveC.y * vh  - _WAVE_BASE / 2) | 0;
+    const sc  = (_waveC.size / _WAVE_BASE) * _waveHoverScale;
+    _waveEl.style.transform = `translate(${tx}px,${ty}px) scale(${sc})`;
+  }
+
+  requestAnimationFrame(choreographyTick);
+}
+
+function onScroll() {
+  const scrollY  = window.scrollY;
+  const vh       = window.innerHeight;
+  const docH     = document.documentElement.scrollHeight - vh;
+  const delta    = scrollY - _lastScrollY;
+  const dir      = delta >= 0 ? 1 : -1;
+
+  // Drive internal wave animation
+  if (heroModel) {
+    heroModel.setScrollProgress(scrollY / (docH || 1));
+    heroModel.setScrollVelocity((delta / vh) * 0.8);
+  }
+
+  // Advance orbit angle by scroll (scroll-driven, not time-driven)
+  _orbitAngle += delta * 0.0025;
+
+  _lastScrollY = scrollY;
+
+  updateSceneText(scrollY, dir);
+}
+
+window.addEventListener('scroll', () => {
+  if (_rafScroll) return;
+  _rafScroll = requestAnimationFrame(() => { onScroll(); _rafScroll = null; });
+}, { passive: true });
+
+window.addEventListener('resize', cacheSectionOffsets, { passive: true });
+
+// ── Soul sequence ──────────────────────────────────────────────────────────
+let _stageChangedAt = 0;
+
+const _SW_IDS = ['sw-top', 'sw-right', 'sw-bottom', 'sw-left'];
+
+function _soulFadeBackground() {
+  _SW_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.transitionDelay = '0s';
+    el.classList.remove('sw-on');
+  });
+  const orbit = document.getElementById('orbit-stage');
+  if (orbit) {
+    orbit.style.transition = 'opacity 0.55s cubic-bezier(0.4,0,0.2,1)';
+    orbit.style.opacity    = '0';
+  }
+}
+
+function _soulRestoreBackground() {
+  _SW_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.add('sw-on');
+  });
+  const orbit = document.getElementById('orbit-stage');
+  if (orbit) {
+    orbit.style.transition = 'opacity 0.4s ease';
+    orbit.style.opacity    = '1';
+  }
+}
+
+
+// ──────────────────────────────────────────────────────────────────────────────
+// ORBIT SYSTEM
+// ──────────────────────────────────────────────────────────────────────────────
+
+const _DONE_SVG = `<svg viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="11" cy="11" r="9" fill="#F5C218"/><path d="M7 11.5l2.5 2.5 5.5-5.5" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+function initOrbit() {
+  const stage = document.getElementById('orbit-stage');
+  if (!stage) return;
+  const hero = stage.parentElement;
+  const hh = hero.offsetHeight;
+
+  const step = Math.round(hh * 0.27);
+  const r1   = Math.round(hh * 0.44);
+
+  const RINGS = [
+    { id:'orbitRing1', size: r1 },
+    { id:'orbitRing2', size: r1 + step },
+    { id:'orbitRing3', size: r1 + step * 2 },
+    { id:'orbitRing4', size: r1 + step * 3 },
+    { id:'orbitRing5', size: r1 + step * 4 },
+    { id:'orbitRing6', size: r1 + step * 5 },
+    { id:'orbitRing7', size: r1 + step * 6 },
+  ];
+
+  RINGS.forEach(rd => {
+    const el = document.getElementById(rd.id);
+    if (el) { el.style.width = rd.size + 'px'; el.style.height = rd.size + 'px'; }
+  });
+
+  const ICONS = [
+    { r: RINGS[0].size/2, a: 0,               inner: true },
+    { r: RINGS[0].size/2, a: Math.PI * 0.72,  inner: true },
+    { r: RINGS[0].size/2, a: Math.PI * 1.44,  inner: true },
+    { r: RINGS[1].size/2, a: Math.PI * 0.25  },
+    { r: RINGS[1].size/2, a: Math.PI * 0.75  },
+    { r: RINGS[1].size/2, a: Math.PI * 1.25  },
+    { r: RINGS[1].size/2, a: Math.PI * 1.75  },
+    { r: RINGS[2].size/2, a: Math.PI * 0.1   },
+    { r: RINGS[2].size/2, a: Math.PI * 0.6   },
+    { r: RINGS[2].size/2, a: Math.PI * 1.1   },
+    { r: RINGS[2].size/2, a: Math.PI * 1.65  },
+    { r: RINGS[3].size/2, a: 0               },
+    { r: RINGS[3].size/2, a: Math.PI * 0.4   },
+    { r: RINGS[3].size/2, a: Math.PI * 0.8   },
+    { r: RINGS[3].size/2, a: Math.PI * 1.2   },
+    { r: RINGS[3].size/2, a: Math.PI * 1.6   },
+    { r: RINGS[4].size/2, a: Math.PI * 0.2   },
+    { r: RINGS[4].size/2, a: Math.PI * 0.6   },
+    { r: RINGS[4].size/2, a: Math.PI * 1.0   },
+    { r: RINGS[4].size/2, a: Math.PI * 1.4   },
+    { r: RINGS[4].size/2, a: Math.PI * 1.8   },
+    { r: RINGS[5].size/2, a: 0               },
+    { r: RINGS[5].size/2, a: Math.PI * 0.45  },
+    { r: RINGS[5].size/2, a: Math.PI * 0.9   },
+    { r: RINGS[5].size/2, a: Math.PI * 1.35  },
+    { r: RINGS[5].size/2, a: Math.PI * 1.75  },
+    { r: RINGS[6].size/2, a: Math.PI * 0.15  },
+    { r: RINGS[6].size/2, a: Math.PI * 0.55  },
+    { r: RINGS[6].size/2, a: Math.PI * 1.05  },
+    { r: RINGS[6].size/2, a: Math.PI * 1.45  },
+    { r: RINGS[6].size/2, a: Math.PI * 1.85  },
+  ];
+
+  // Face images (circular crop via border-radius)
+  const FACES = [
+    'images/face-sisi.png',
+    'images/face-bahgt.png',
+    'images/face-elguyar.png',
+  ];
+
+  ICONS.forEach(ic => {
+    const wrap = document.createElement('div');
+    wrap.className = 'orbit-icon' + (ic.inner ? ' orbit-icon-inner' : '');
+    wrap.style.cssText = 'position:absolute;width:22px;height:22px;';
+
+    // SVG checkmark layer
+    const svgLayer = document.createElement('div');
+    svgLayer.innerHTML = _DONE_SVG;
+    svgLayer.style.cssText =
+      'position:absolute;inset:0;transition:opacity .65s ease,transform .65s ease;';
+
+    // Face image layer (hidden by default)
+    const faceImg = document.createElement('img');
+    faceImg.style.cssText =
+      'position:absolute;inset:0;width:100%;height:100%;border-radius:50%;' +
+      'opacity:0;transform:scale(0.65);object-fit:cover;' +
+      'transition:opacity .65s ease,transform .65s ease;';
+
+    wrap.appendChild(svgLayer);
+    wrap.appendChild(faceImg);
+    stage.appendChild(wrap);
+    ic.el      = wrap;
+    ic.svgEl   = svgLayer;
+    ic.faceEl  = faceImg;
+    ic.hasFace = false;
+  });
+
+  // ── Idle + scroll combined angle ─────────────────────────────────────────────
+  // _orbitAngle (global) = scroll-driven delta (accumulated in onScroll)
+  // _idleT below = time-driven ambient drift (very slow, always on)
+  const IDLE_SPEED = 0.000032; // rad/ms — one full revolution ≈ 3 minutes
+
+  (function tick(ts) {
+    const idleT = ts * IDLE_SPEED;
+    const cx = stage.offsetWidth  / 2;
+    const cy = stage.offsetHeight / 2;
+    ICONS.forEach(ic => {
+      const a = ic.a + _orbitAngle + idleT;
+      ic.el.style.left = (cx + ic.r * Math.cos(a) - 11) + 'px';
+      ic.el.style.top  = (cy + ic.r * Math.sin(a) - 11) + 'px';
+    });
+    requestAnimationFrame(tick);
+  })(0);
+
+  // ── Per-icon face scheduler ──────────────────────────────────────────────────
+  // Each outer icon runs its own independent timer — no shared loop, no sync.
+  // Target steady state: ~18% active = ~5 faces from 28 outer icons at once.
+  //
+  //   Hold  : 4 000 – 6 500 ms  (avg 5 250 ms)
+  //   Rest  : 14 000 – 30 000 ms (avg 22 000 ms)
+  //   Active fraction ≈ 5 250 / (5 250 + 22 000 + 700) ≈ 18.7 %
+
+  const HOLD_MIN   = 4000;   // ms face stays visible (min)
+  const HOLD_RANGE = 2500;   // ms additional random hold
+  const REST_MIN   = 14000;  // ms between appearances (min)
+  const REST_RANGE = 16000;  // ms additional random rest
+
+  const outerIcons = ICONS.filter(ic => !ic.inner);
+
+  outerIcons.forEach((ic, idx) => {
+    ic.lastFace = -1; // avoid repeating the same face consecutively
+
+    function showFace() {
+      if (ic.hasFace) { scheduleNext(); return; }
+      ic.hasFace = true;
+
+      // Pick face — never same as last shown on this icon
+      const pool = FACES.map((_, i) => i).filter(i => i !== ic.lastFace);
+      const faceIdx = pool[Math.floor(Math.random() * pool.length)];
+      ic.lastFace = faceIdx;
+      ic.faceEl.src = FACES[faceIdx];
+
+      // Smooth fade-in: face scales up, SVG scales down
+      requestAnimationFrame(() => {
+        ic.svgEl.style.opacity    = '0';
+        ic.svgEl.style.transform  = 'scale(0.65)';
+        ic.faceEl.style.opacity   = '1';
+        ic.faceEl.style.transform = 'scale(1)';
+      });
+
+      // Hold, then smooth revert
+      const hold = HOLD_MIN + Math.random() * HOLD_RANGE;
+      setTimeout(() => {
+        ic.svgEl.style.opacity    = '1';
+        ic.svgEl.style.transform  = 'scale(1)';
+        ic.faceEl.style.opacity   = '0';
+        ic.faceEl.style.transform = 'scale(0.65)';
+        // Wait for fade-out to finish before re-enabling
+        setTimeout(() => { ic.hasFace = false; scheduleNext(); }, 700);
+      }, hold);
+    }
+
+    function scheduleNext() {
+      setTimeout(showFace, REST_MIN + Math.random() * REST_RANGE);
+    }
+
+    // Stagger initial appearance across all icons so they spread evenly
+    // over the first 14 s — no burst, no clustering at startup.
+    const initialDelay = 2000
+      + (idx / outerIcons.length) * 12000  // linear spread: 2–14 s
+      + Math.random() * 3000;              // ±1.5 s jitter per icon
+    setTimeout(showFace, initialDelay);
+  });
+}
+
+// (word cycling now scroll-driven — see updateSceneText)
+
+// ──────────────────────────────────────────────────────────────────────────────
+// SCROLL REVEAL (IntersectionObserver)
+// ──────────────────────────────────────────────────────────────────────────────
+
+const revealObs = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('rv');
+      // Demo section labels (inline-styled elements)
+      if (entry.target.id === 'demo-label' || entry.target.id === 'demo-title') {
+        entry.target.style.opacity = '1';
+        entry.target.style.transform = 'translateY(0)';
+      }
+    }
+  });
+}, { threshold: 0.15 });
+
+// ──────────────────────────────────────────────────────────────────────────────
+// DEMO — CONTROLLED GUIDED TASK (read-only, no editing)
+// One predefined task, 3 steps, each step has a FIXED sound from a different pack
+// ──────────────────────────────────────────────────────────────────────────────
+
+// Fixed sound per step — NO randomness, each represents a different personality
+const DEMO_STEPS_SOUNDS = [
+  'sounds/bahgt/task-done.mp3',   // Step 1 — Bahgat: warm energy
+  'sounds/elsisi/task-done.mp3',  // Step 2 — Sisi: smooth & confident
+  'sounds/elguyar/task-done.mp3', // Step 3 — El Guyar: eccentric
+];
+
+// tasks populated from TASKS_EN on boot (or TASKS_AR if lang is Arabic)
+let tasks = [];
+
+let _playingItemId = null;
+
+function playDemoSound(src, itemId) {
+  if (_muted) return;
+  if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; }
+  const a = new Audio(src);
+  a.volume = 0.85;
+  a.play().catch(() => {});
+  currentAudio = a;
+
+  _playingItemId = itemId;
+  renderTasks(); // show wave bars on this step immediately
+
+  if (heroModel) heroModel.triggerEmotion(0.45);
+
+  // Titlebar wave indicator
+  const ind = document.getElementById('app-wave-ind');
+  if (ind) ind.classList.add('on');
+
+  // Sustained yellow border glow for full sound duration
+  const win = document.getElementById('app-window');
+  if (win) win.classList.add('playing');
+
+  // Clean up when sound ends
+  a.addEventListener('ended', () => {
+    _playingItemId = null;
+    renderTasks(); // hide wave bars
+    if (ind) ind.classList.remove('on');
+    if (win) win.classList.remove('playing');
+  });
+}
+
+function renderTasks() {
+  const list = document.getElementById('task-list');
+  if (!list) return;
+  list.innerHTML = '';
+
+  tasks.forEach(task => {
+    const doneCount = task.items.filter(i => i.done).length;
+    const allDone   = task.items.length > 0 && doneCount === task.items.length;
+
+    const card = document.createElement('div');
+    card.className = 'task-card' + (task.expanded ? ' expanded' : '') + (allDone ? ' done-card' : '');
+    card.dataset.id = task.id;
+
+    card.innerHTML = `
+      <div class="task-card-header" onclick="toggleExpand('${task.id}')">
+        <div class="task-circle${allDone ? ' done' : ''}"></div>
+        <div class="task-card-name">${escapeHtml(task.name)}</div>
+        <span class="task-count">${doneCount}/${task.items.length}</span>
+        <span class="task-expand-btn">▾</span>
+      </div>
+      ${task.expanded ? `
+      <div class="task-checklist">
+        ${task.items.map(item => `
+          <div class="check-item${item.done ? ' done' : ''}${item.id === _playingItemId ? ' sound-playing' : ''}" onclick="toggleItem('${task.id}','${item.id}')">
+            <div class="check-circle${item.done ? ' done' : ''}"></div>
+            <span class="check-text">${escapeHtml(item.text)}</span>
+            <div class="check-wave">
+              <div class="cwb"></div><div class="cwb"></div>
+              <div class="cwb"></div><div class="cwb"></div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      ` : ''}
+    `;
+
+    list.appendChild(card);
+  });
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+window.toggleExpand = function(id) {
+  const t = tasks.find(t => t.id === id);
+  if (t) { t.expanded = !t.expanded; renderTasks(); }
+};
+
+window.toggleItem = function(taskId, itemId) {
+  const task = tasks.find(t => t.id === taskId);
+  if (!task) return;
+  const item = task.items.find(i => i.id === itemId);
+  if (!item) return;
+  item.done = !item.done;
+  renderTasks();
+  if (item.done) {
+    playDemoSound(item.soundSrc, item.id);
+    // If all steps done — satisfaction bounce on the app window
+    if (task.items.every(i => i.done)) {
+      setTimeout(() => {
+        const win = document.getElementById('app-window');
+        if (win) { win.classList.add('demo-win'); setTimeout(() => win.classList.remove('demo-win'), 700); }
+      }, 350);
+    }
+  }
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
+// MODAL
+// ──────────────────────────────────────────────────────────────────────────────
+
+window.openModal  = function() {
+  document.getElementById('dl-modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+};
+window.closeModal = function() {
+  document.getElementById('dl-modal').classList.remove('open');
+  document.body.style.overflow = '';
+};
+
+// ── Legal modal (Privacy / Terms) ────────────────────────────────────────────
+const LEGAL_CONTENT = {
+  privacy: {
+    title: 'Privacy Policy',
+    date:  'Last updated: April 2026',
+    html: `
+      <p>At TASK•FM, we keep things simple.</p>
+      <p>We don't collect data we don't need. We don't sell your information. And we don't track your behavior beyond what's necessary to improve the experience.</p>
+      <h4>1. What we collect</h4>
+      <ul>
+        <li>Basic usage data (interactions inside the app)</li>
+        <li>Device-related info (for performance and stability)</li>
+        <li>Optional data (like email if you sign up)</li>
+      </ul>
+      <h4>2. What we don't collect</h4>
+      <p>We do not track personal conversations, access your files, or sell your data.</p>
+      <h4>3. How we use data</h4>
+      <p>We use data to improve performance, fix bugs, and enhance your experience.</p>
+      <h4>4. Control</h4>
+      <p>You can stop using the app anytime or request data removal if applicable.</p>
+      <h4>5. Contact</h4>
+      <p><a href="mailto:hello@taskfm.app">hello@taskfm.app</a></p>
+      <p class="legal-sign">Built with respect. Not surveillance.</p>
+    `
+  },
+  terms: {
+    title: 'Terms of Use',
+    date:  'Last updated: April 2026',
+    html: `
+      <p>By using TASK•FM, you agree to these terms. If you don't agree, please do not use the app.</p>
+      <h4>1. Product</h4>
+      <p>TASK•FM is a productivity experience that uses sound and interaction.</p>
+      <h4>2. Usage</h4>
+      <p>You agree not to misuse, hack, or exploit the app.</p>
+      <h4>3. Content</h4>
+      <p>All sounds and design elements are owned or licensed by TASK•FM.</p>
+      <h4>4. Availability</h4>
+      <p>Features may change and the app may experience downtime.</p>
+      <h4>5. Liability</h4>
+      <p>We are not responsible for data loss or indirect damages.</p>
+      <h4>6. Contact</h4>
+      <p><a href="mailto:hello@taskfm.app">hello@taskfm.app</a></p>
+      <p class="legal-sign">You bring the tasks. We bring the feeling.</p>
+    `
+  }
+};
+
+let _legalModel = null;
+window.openLegalModal = function(type) {
+  const data = LEGAL_CONTENT[type];
+  if (!data) return;
+
+  // Populate content
+  document.getElementById('legal-body').innerHTML =
+    `<h2>${data.title}</h2><p class="legal-date">${data.date}</p>${data.html}`;
+
+  // Init wave model once
+  const wrap = document.getElementById('legal-wave-wrap');
+  if (wrap && !_legalModel) {
+    const isLight = document.documentElement.classList.contains('light');
+    _legalModel = new CircleWaveModel(wrap, {
+      bg: isLight ? '#f5f3ef' : '#0b0b0b',
+    });
+    if (isLight) _legalModel.setDarkStrands?.(true);
+  }
+  if (_legalModel) _legalModel.triggerEmotion(0.25);
+
+  document.getElementById('legal-modal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  // Reset scroll position
+  const body = document.getElementById('legal-body');
+  if (body) body.scrollTop = 0;
+};
+window.closeLegalModal = function() {
+  document.getElementById('legal-modal').classList.remove('open');
+  document.body.style.overflow = '';
+};
+// Keyboard: Escape closes legal modal
+window.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeLegalModal();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ──────────────────────────────────────────────────────────────────────────────
+// TUNER CTA
+// ──────────────────────────────────────────────────────────────────────────────
+
+const DEFAULT_TUNER_ITEMS = [
+  { freq:'88',  label:'Instagram', type:'link',  value:'https://www.instagram.com/nedalnassser/', title:'@NEDALNASSSER',  sub:'Instagram' },
+  { freq:'95',  label:'X',         type:'link',  value:'https://x.com/nedalnasser6',              title:'@NEDALNASSER6',  sub:'X / Twitter' },
+  { freq:'101', label:'Linktree',  type:'link',  value:'https://linktr.ee/nedal_nasser',          title:'NEDAL_NASSER',   sub:'Linktree' },
+  { freq:'108', label:'LinkedIn',  type:'link',  value:'https://www.linkedin.com/in/nedal-adnan-b21609290/', title:'NEDAL ADNAN', sub:'LinkedIn' },
+];
+
+function initTuner(items) {
+  const ITEMS     = items || DEFAULT_TUNER_ITEMS;
+  const GAP       = 1 / (ITEMS.length - 1);
+  const SNAP_FRAC = 0.46;
+  const SCRAMBLE  = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@._-!#';
+
+  const canvas   = document.getElementById('tuner-canvas');
+  const rail     = document.getElementById('tuner-rail');
+  const handle   = document.getElementById('tuner-handle');
+  const readout  = document.getElementById('tuner-readout');
+  const freqNum  = document.getElementById('tuner-freq-num');
+  const snrEl    = document.getElementById('tuner-snr');
+  const dispT    = document.getElementById('tuner-display-title');
+  const dispS    = document.getElementById('tuner-display-sub');
+  const scaleEl  = document.getElementById('tuner-scale');
+  if (!rail) return;
+
+  // ── Scale ticks ───────────────────────────────────────────────────────────
+  scaleEl.innerHTML = '';
+  ITEMS.forEach((item, i) => {
+    const t = document.createElement('div');
+    t.className = 'tuner-tick';
+    t.innerHTML = `<div class="tuner-tick-mark"></div><div class="tuner-tick-freq">${item.freq}</div>`;
+    t.addEventListener('click', () => animateToIndex(i));
+    scaleEl.appendChild(t);
+  });
+
+  // ── Canvas waveform ───────────────────────────────────────────────────────
+  let waveTarget = 0, waveCur = 0, waveT = 0;
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    function resizeC() {
+      const s = document.getElementById('s-tuner');
+      if (s) { canvas.width = s.offsetWidth; canvas.height = s.offsetHeight; }
+    }
+    resizeC();
+    window.addEventListener('resize', resizeC, { passive: true });
+
+    function drawWave() {
+      const w = canvas.width, h = canvas.height, sig = waveCur, ns = 1 - sig;
+      ctx.clearRect(0, 0, w, h);
+      // Two wave layers
+      [[0.20, 1.8, 0.35, 0.16 + sig * 0.24],
+       [0.11, 3.8, 0.65, 0.07 + sig * 0.13]].forEach(([amp, fr, sp, al]) => {
+        ctx.beginPath();
+        for (let x = 0; x <= w; x++) {
+          const px = x / w;
+          let y = Math.sin(px * fr * Math.PI * 2 + waveT * sp) * amp;
+          y += Math.sin(px * 9  * Math.PI * 2 + waveT * 2.1) * 0.08 * ns;
+          y += Math.sin(px * 17 * Math.PI * 2 + waveT * 3.4) * 0.05 * ns;
+          y += Math.sin(px * 27 * Math.PI * 2 + waveT * 1.2) * 0.04 * ns;
+          const vy = h * 0.58 + y * h;
+          x === 0 ? ctx.moveTo(x, vy) : ctx.lineTo(x, vy);
+        }
+        ctx.strokeStyle = `rgba(255,255,255,${al.toFixed(2)})`;
+        ctx.lineWidth = 1.5; ctx.stroke();
+      });
+    }
+    (function waveLoop(ts) {
+      waveT   = ts * 0.00045;
+      waveCur = lerp(waveCur, waveTarget, 0.06);
+      drawWave();
+      requestAnimationFrame(waveLoop);
+    })(0);
+  }
+
+  // ── Text scrambling ───────────────────────────────────────────────────────
+  let _scrTitle = '', _scrSub = '', _scrLocked = false, _scrRaf = null, _scrTick = 0;
+
+  function scrambleLine(real) {
+    return real.split('').map(c =>
+      (c === ' ' || c === '.' || c === '@' || c === '+')
+        ? c : SCRAMBLE[Math.floor(Math.random() * SCRAMBLE.length)]
+    ).join('');
+  }
+
+  function runScramble() {
+    if (_scrLocked) { _scrRaf = null; return; }
+    _scrTick++;
+    if (_scrTick % 3 === 0) {
+      dispT.textContent = scrambleLine(_scrTitle);
+      dispS.textContent = scrambleLine(_scrSub);
+    }
+    _scrRaf = requestAnimationFrame(runScramble);
+  }
+
+  function startScrambling(title, sub) {
+    _scrTitle = title; _scrSub = sub; _scrLocked = false;
+    if (!_scrRaf) _scrRaf = requestAnimationFrame(runScramble);
+    dispT.classList.remove('locked'); dispS.classList.remove('locked');
+    readout.classList.remove('locked');
+  }
+
+  function showClean(item) {
+    _scrLocked = true;
+    if (_scrRaf) { cancelAnimationFrame(_scrRaf); _scrRaf = null; }
+    dispT.textContent = item.title; dispS.textContent = item.sub;
+    dispT.classList.add('locked'); dispS.classList.add('locked');
+    readout.classList.add('locked');
+    // Make title/sub clickable
+    const href = item.type === 'email' ? 'mailto:' + item.value : item.value;
+    dispT.style.cursor = 'pointer';
+    dispT.onclick = () => { if (item.type !== 'soon') window.open(href, item.type === 'email' ? '_self' : '_blank'); };
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  let pos = -1, activeIdx = -1, isDragging = false;
+  const fracAt  = i => i / (ITEMS.length - 1);
+  const nearest = f => ITEMS.reduce((b, _, i) =>
+    Math.abs(f - fracAt(i)) < Math.abs(f - fracAt(b)) ? i : b, 0);
+  const sigOf   = f => Math.max(0, 1 - Math.abs(f - fracAt(nearest(f))) / (GAP * 0.5));
+  const freqAt  = f => {
+    const lo = +ITEMS[0].freq, hi = +ITEMS[ITEMS.length-1].freq;
+    return (lo + f * (hi - lo)).toFixed(1);
+  };
+
+  // ── setPos ────────────────────────────────────────────────────────────────
+  function setPos(f) {
+    pos = Math.max(0, Math.min(1, f));
+    handle.style.left = (pos * 100) + '%';
+    const ni  = nearest(pos);
+    const sig = sigOf(pos);
+    const locked = sig >= (1 - SNAP_FRAC * 0.88);
+    freqNum.textContent = freqAt(pos);
+    snrEl.textContent   = (sig * sig * 44).toFixed(1);
+    // Drive waveform
+    waveTarget = locked ? 1 : sig * 0.45;
+    // Text
+    if (locked) {
+      if (ni !== activeIdx) {
+        activeIdx = ni;
+        showClean(ITEMS[ni]);
+        handle.classList.add('locked');
+        if (heroModel) heroModel.triggerEmotion(0.22);
+      }
+    } else {
+      activeIdx = -1;
+      startScrambling(ITEMS[ni].title, ITEMS[ni].sub);
+      handle.classList.remove('locked');
+    }
+    document.querySelectorAll('.tuner-tick').forEach((el, i) => el.classList.toggle('active', locked && i === ni));
+  }
+
+  // ── Animated snap ─────────────────────────────────────────────────────────
+  function animateToIndex(i) {
+    const start = pos < 0 ? fracAt(i) - 0.002 : pos, end = fracAt(i);
+    const t0 = performance.now(), dur = 380;
+    (function tick(now) {
+      const t = Math.min(1, (now - t0) / dur);
+      setPos(lerp(start, end, 1 - Math.pow(1 - t, 3)));
+      if (t < 1) requestAnimationFrame(tick);
+    })(t0);
+  }
+
+  // ── Events ────────────────────────────────────────────────────────────────
+  const fracFromEvent = e => {
+    const r = rail.getBoundingClientRect();
+    return ((e.touches ? e.touches[0].clientX : e.clientX) - r.left) / r.width;
+  };
+  function onStart(e) { isDragging = true; e.preventDefault(); if (pos < 0) pos = 0; setPos(fracFromEvent(e)); }
+  function onMove(e)  { if (!isDragging) return; e.preventDefault(); setPos(fracFromEvent(e)); }
+  function onEnd()    {
+    if (!isDragging) return; isDragging = false;
+    // No auto-snap — handle stays wherever user releases
+  }
+  rail.addEventListener('mousedown',    onStart);
+  handle.addEventListener('mousedown',  onStart);
+  window.addEventListener('mousemove',  onMove);
+  window.addEventListener('mouseup',    onEnd);
+  rail.addEventListener('touchstart',   onStart, { passive: false });
+  handle.addEventListener('touchstart', onStart, { passive: false });
+  window.addEventListener('touchmove',  onMove,  { passive: false });
+  window.addEventListener('touchend',   onEnd);
+
+  // Start scrambling with first item as default display
+  startScrambling(ITEMS[0].title, ITEMS[0].sub);
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// ADMIN CONFIG OVERRIDE
+// ──────────────────────────────────────────────────────────────────────────────
+
+function applyAdminConfig() {
+  try {
+    const raw = localStorage.getItem('taskfm_site_config');
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    const c  = saved.content || {};
+    const cf = saved.config  || {};
+    if (c.dmgPath) {
+      document.querySelectorAll('#macDlBtn').forEach(el => el.href = c.dmgPath);
+    }
+    if (cf.defaultPack && PACKS[cf.defaultPack]) activePack = cf.defaultPack;
+    if (cf.soundDefault === false) _muted = true;
+    // Tuner items override (set in admin dashboard)
+    if (c.tunerItems && Array.isArray(c.tunerItems) && c.tunerItems.length) {
+      window._adminTunerItems = c.tunerItems;
+    }
+  } catch (e) {}
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// LANGUAGE / ARABIC SUPPORT
+// ──────────────────────────────────────────────────────────────────────────────
+
+const TASKS_EN = [
+  {
+    id: 'demo', name: 'build a new app', expanded: true,
+    items: [
+      { id: 'd1', text: 'pick the idea',  done: false, soundSrc: DEMO_STEPS_SOUNDS[2] },
+      { id: 'd2', text: 'design the UI', done: false, soundSrc: DEMO_STEPS_SOUNDS[0] },
+      { id: 'd3', text: 'ship it',       done: false, soundSrc: DEMO_STEPS_SOUNDS[1] },
+    ],
+  },
+];
+
+const TASKS_AR = [
+  {
+    id: 'demo', name: 'ابني تطبيق جديد', expanded: true,
+    items: [
+      { id: 'd1', text: 'اختار الفكرة',  done: false, soundSrc: DEMO_STEPS_SOUNDS[2] },
+      { id: 'd2', text: 'صمم الواجهة',  done: false, soundSrc: DEMO_STEPS_SOUNDS[0] },
+      { id: 'd3', text: 'ابعته للناس',  done: false, soundSrc: DEMO_STEPS_SOUNDS[1] },
+    ],
+  },
+];
+
+function cloneTasks(src) {
+  return src.map(t => ({
+    ...t,
+    items: t.items.map(i => ({ ...i })),
+  }));
+}
+
+// Default to English tasks at parse time so tasks[] is never empty
+tasks = cloneTasks(TASKS_EN);
+
+let _currentLang = 'en';
+
+function setLang(lang) {
+  _currentLang = lang;
+  const html = document.documentElement;
+  html.lang = lang;
+  html.dir  = lang === 'ar' ? 'rtl' : 'ltr';
+
+  // Toggle button label
+  const btn = document.getElementById('lang-toggle');
+  if (btn) btn.textContent = lang === 'ar' ? 'EN' : 'ع';
+
+  // Swap all [data-en] / [data-ar] elements
+  document.querySelectorAll('[data-en]').forEach(el => {
+    const val = el.getAttribute('data-' + lang);
+    if (val != null) el.textContent = val;
+  });
+
+  // Manually swap elements that contain HTML (not just text)
+  const heroSub = document.getElementById('hero-sub');
+  if (heroSub) heroSub.textContent = lang === 'ar'
+    ? 'أضف مهامك. أنجزها. واستمع لما سيحدث.'
+    : 'Add tasks. Check them off. Hear what happens.';
+
+  const ideaLine = document.getElementById('idea-line1');
+  if (ideaLine) ideaLine.innerHTML = lang === 'ar'
+    ? 'كل تطبيق مهام<br>يفعل نفس الشيء.'
+    : 'Every to-do app<br>does the same thing.';
+
+  const scrollHint = document.getElementById('scroll-hint');
+  if (scrollHint) scrollHint.innerHTML = lang === 'ar'
+    ? '↓&nbsp;&nbsp;امسح للأسفل لتشعر بها'
+    : '↓&nbsp;&nbsp;scroll to feel it';
+
+  const weAdded = document.getElementById('we-added-text');
+  if (weAdded) weAdded.textContent = lang === 'ar' ? 'أضفنا' : 'WE ADDED';
+
+  const appTitle = document.querySelector('.app-title-text');
+  if (appTitle) appTitle.textContent = lang === 'ar' ? 'مهامي' : 'My Tasks';
+
+  const footerMain = document.getElementById('footer-main');
+  if (footerMain) footerMain.innerHTML = lang === 'ar'
+    ? 'صُنع بالصوت في عقل <a href="https://linktr.ee/nedal_nasser" target="_blank" class="footer-author">Nedal</a>'
+    : 'Made with sound in <a href="https://linktr.ee/nedal_nasser" target="_blank" class="footer-author">Nedal</a>\'s mind';
+
+  const footerAlso = document.getElementById('footer-also');
+  if (footerAlso) footerAlso.textContent = lang === 'ar' ? 'شوف كمان:' : 'Check out also:';
+
+  const footerPrivacy = document.getElementById('footer-privacy');
+  if (footerPrivacy) footerPrivacy.textContent = lang === 'ar' ? 'الخصوصية' : 'Privacy';
+
+  const footerTerms = document.getElementById('footer-terms');
+  if (footerTerms) footerTerms.textContent = lang === 'ar' ? 'الشروط' : 'Terms';
+
+  // Swap demo tasks
+  tasks = cloneTasks(lang === 'ar' ? TASKS_AR : TASKS_EN);
+  renderTasks();
+
+  // Persist
+  try { localStorage.setItem('taskfm-lang', lang); } catch(e) {}
+}
+
+window.toggleLang = function() {
+  setLang(_currentLang === 'ar' ? 'en' : 'ar');
+};
+
+// ──────────────────────────────────────────────────────────────────────────────
+// BOOT
+// ──────────────────────────────────────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', () => {
+  applyAdminConfig();
+  cacheSectionOffsets();
+  runPreloader();
+  initOrbit();
+  _waveC.size = _ring1Size; // sync wave size to ring 1 immediately (no lerp delay)
+
+  // Restore saved language
+  try {
+    const savedLang = localStorage.getItem('taskfm-lang');
+    if (savedLang === 'ar') setLang('ar');
+  } catch(e) {}
+
+  renderTasks();
+  initWaveModels();
+
+  // Start wave choreography RAF + initial text state
+  choreographyTick();
+
+  // Tuner CTA
+  initTuner(window._adminTunerItems || null);
+
+  // Pack card waveform hover
+  initPackCards();
+
+  // Scroll reveal observers
+  // querySelectorAll for section-label/title catches ALL instances (demo + packs)
+  const revealTargets = [
+    document.getElementById('demo-label'),
+    document.getElementById('demo-title'),
+    document.querySelector('.demo-app-side'),
+    ...document.querySelectorAll('.section-label'),
+    ...document.querySelectorAll('.section-title'),
+    ...document.querySelectorAll('.pack-card'),
+    document.querySelector('.dl-box'),
+    document.getElementById('tuner-wrap'),
+  ];
+
+  function revealEl(el) {
+    if (!el || el.classList.contains('rv')) return;
+    el.classList.add('rv');
+    if (el.id === 'demo-label' || el.id === 'demo-title') {
+      el.style.opacity = '1';
+      el.style.transform = 'translateY(0)';
+    }
+  }
+
+  // Scroll-based fallback reveal — runs on every scroll, independent of IO
+  // This ensures sections appear even if IntersectionObserver has timing issues
+  checkRevealOnScroll = function() {
+    const vh = window.innerHeight;
+    revealTargets.forEach(el => {
+      if (!el || el.classList.contains('rv')) return;
+      const r = el.getBoundingClientRect();
+      if (r.top < vh * 0.92 && r.bottom > 0) revealEl(el);
+    });
+  };
+  window.addEventListener('scroll', checkRevealOnScroll, { passive: true });
+
+  revealTargets.forEach(el => {
+    if (!el) return;
+    revealObs.observe(el);
+    // Immediately reveal any element already at or above the viewport
+    const r = el.getBoundingClientRect();
+    if (r.top < window.innerHeight) revealEl(el);
+  });
+
+  // Hard fallback: reveal everything after 5 seconds regardless
+  setTimeout(() => revealTargets.forEach(revealEl), 5000);
+});
+</script>
+</body>
+</html>

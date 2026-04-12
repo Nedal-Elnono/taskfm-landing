@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TASK FM — Admin Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --y:#F5C218; --yg:rgba(245,194,24,.14); --yb:rgba(245,194,24,.3);
+  --bg:#080808; --bg2:#0f0f0f; --bg3:#171717; --bg4:#222; --bg5:#2a2a2a;
+  --t:#f2f2f2; --t2:#888; --t3:#444;
+  --br:rgba(255,255,255,.06); --br2:rgba(255,255,255,.10); --br3:rgba(255,255,255,.16);
+  --red:#E04848; --green:#3DB870;
+  --mono:'JetBrains Mono',monospace; --sans:'Inter',system-ui,sans-serif;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{font-family:var(--sans);background:var(--bg);color:var(--t);-webkit-font-smoothing:antialiased;overflow:hidden}
+a{text-decoration:none;color:inherit}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:var(--bg2)}::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
+
+/* ─── PIN GATE ─────────────────────────────────────────────────────────────── */
+#gate {
+  position:fixed;inset:0;z-index:999;
+  background:var(--bg);display:flex;align-items:center;justify-content:center;
+}
+.gate-box {
+  width:340px;text-align:center;
+}
+.gate-logo {
+  font-family:var(--mono);font-size:20px;font-weight:800;letter-spacing:.04em;margin-bottom:8px;
+}
+.gate-logo span{color:var(--y)}
+.gate-sub {font-size:13px;color:var(--t2);margin-bottom:36px;}
+.gate-label {
+  font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--t2);margin-bottom:10px;display:block;text-align:left;
+}
+.gate-input {
+  width:100%;background:var(--bg3);border:1px solid var(--br3);border-radius:8px;
+  padding:13px 16px;font-family:var(--mono);font-size:16px;font-weight:700;
+  color:var(--t);letter-spacing:.25em;text-align:center;outline:none;
+  transition:border-color .2s;margin-bottom:12px;
+}
+.gate-input:focus{border-color:var(--yb)}
+.gate-err{font-family:var(--mono);font-size:12px;color:var(--red);height:18px;margin-bottom:8px;}
+.gate-btn {
+  width:100%;background:var(--y);color:#000;border:none;border-radius:8px;
+  padding:13px;font-family:var(--mono);font-size:13px;font-weight:800;
+  letter-spacing:.04em;cursor:pointer;transition:all .2s;
+}
+.gate-btn:hover{opacity:.88;transform:translateY(-1px)}
+
+/* ─── LAYOUT ───────────────────────────────────────────────────────────────── */
+#app{display:none;height:100%;flex-direction:row}
+#app.show{display:flex}
+
+/* ─── SIDEBAR ──────────────────────────────────────────────────────────────── */
+.sidebar {
+  width:220px;flex-shrink:0;
+  background:var(--bg2);border-right:1px solid var(--br);
+  display:flex;flex-direction:column;padding:0;overflow:hidden;
+}
+.sidebar-logo {
+  padding:22px 20px 18px;border-bottom:1px solid var(--br);
+  font-family:var(--mono);font-size:14px;font-weight:800;letter-spacing:.04em;
+}
+.sidebar-logo span{color:var(--y)}
+.sidebar-badge {
+  display:inline-block;font-family:var(--mono);font-size:9px;font-weight:700;
+  background:var(--red);color:white;border-radius:3px;padding:2px 5px;
+  letter-spacing:.06em;margin-left:8px;vertical-align:2px;
+}
+.nav-section{padding:20px 12px 6px;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.12em;text-transform:uppercase;}
+.nav-item {
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;border-radius:6px;cursor:pointer;
+  font-size:13px;font-weight:500;color:var(--t2);
+  transition:all .15s;margin:1px 8px;
+}
+.nav-item:hover{background:var(--bg3);color:var(--t)}
+.nav-item.active{background:var(--bg4);color:var(--t)}
+.nav-item .ni{font-size:15px;width:18px;text-align:center;flex-shrink:0}
+.sidebar-footer{margin-top:auto;padding:14px 20px;border-top:1px solid var(--br);font-family:var(--mono);font-size:10px;color:var(--t3);letter-spacing:.06em}
+
+/* ─── MAIN ─────────────────────────────────────────────────────────────────── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{
+  padding:14px 28px;border-bottom:1px solid var(--br);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+  background:var(--bg2);
+}
+.topbar-title{font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:.04em}
+.topbar-actions{display:flex;gap:8px;align-items:center}
+.btn {
+  font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.04em;
+  padding:7px 14px;border-radius:6px;cursor:pointer;border:1px solid var(--br3);
+  background:var(--bg4);color:var(--t2);transition:all .15s;
+}
+.btn:hover{color:var(--t);border-color:var(--br3)}
+.btn.primary{background:var(--y);color:#000;border-color:var(--y)}
+.btn.primary:hover{opacity:.88}
+.btn.danger{border-color:rgba(224,72,72,.3);color:var(--red)}
+.btn.danger:hover{background:rgba(224,72,72,.08)}
+.content{flex:1;overflow-y:auto;padding:28px}
+
+/* ─── PANELS ───────────────────────────────────────────────────────────────── */
+.panel{display:none}
+.panel.active{display:block}
+
+/* ─── CARD ─────────────────────────────────────────────────────────────────── */
+.card{
+  background:var(--bg2);border:1px solid var(--br2);border-radius:12px;
+  padding:24px;margin-bottom:20px;
+}
+.card-title{
+  font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--t2);margin-bottom:18px;
+  padding-bottom:12px;border-bottom:1px solid var(--br);
+}
+.card-title .ct-badge{
+  display:inline-block;font-size:9px;background:var(--yg);color:var(--y);
+  border:1px solid var(--yb);border-radius:3px;padding:2px 6px;
+  margin-left:8px;vertical-align:2px;letter-spacing:.06em;
+}
+
+/* ─── FORM FIELDS ──────────────────────────────────────────────────────────── */
+.field{margin-bottom:16px}
+.field-label{
+  font-family:var(--mono);font-size:11px;font-weight:700;color:var(--t2);
+  letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;display:flex;
+  align-items:center;gap:8px;
+}
+.field-lang{font-size:9px;background:var(--bg4);border:1px solid var(--br2);border-radius:3px;padding:2px 5px;color:var(--t3);letter-spacing:.04em}
+.field input,.field textarea,.field select {
+  width:100%;background:var(--bg3);border:1px solid var(--br2);border-radius:7px;
+  padding:10px 13px;font-family:var(--sans);font-size:13px;color:var(--t);outline:none;
+  transition:border-color .2s;resize:vertical;
+}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--yb)}
+.field textarea{min-height:70px;line-height:1.55}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* ─── TOGGLE ───────────────────────────────────────────────────────────────── */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--br)}
+.toggle-row:last-child{border-bottom:none}
+.toggle-info{flex:1}
+.toggle-name{font-size:13px;font-weight:600;margin-bottom:2px}
+.toggle-desc{font-size:12px;color:var(--t2)}
+.toggle{position:relative;width:38px;height:22px;flex-shrink:0;margin-left:16px}
+.toggle input{opacity:0;width:0;height:0;position:absolute}
+.toggle-track{
+  position:absolute;inset:0;border-radius:11px;
+  background:var(--bg4);border:1px solid var(--br2);
+  cursor:pointer;transition:all .2s;
+}
+.toggle input:checked+.toggle-track{background:var(--y);border-color:var(--y)}
+.toggle-thumb{
+  position:absolute;top:3px;left:3px;width:14px;height:14px;
+  border-radius:50%;background:var(--t2);transition:all .2s;pointer-events:none;
+}
+.toggle input:checked~.toggle-thumb{left:19px;background:#000}
+
+/* ─── SOUND PACK ───────────────────────────────────────────────────────────── */
+.pack-row{
+  display:flex;align-items:center;gap:14px;
+  padding:12px 14px;border-radius:8px;background:var(--bg3);margin-bottom:8px;
+  border:1px solid var(--br);transition:border-color .2s;
+}
+.pack-row:hover{border-color:var(--br2)}
+.pack-icon{font-size:22px;width:32px;text-align:center;flex-shrink:0}
+.pack-info{flex:1}
+.pack-name{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.04em;margin-bottom:3px}
+.pack-meta{font-size:11px;color:var(--t2)}
+.pack-sounds{margin-top:4px}
+.pack-tag{
+  display:inline-block;font-family:var(--mono);font-size:9px;font-weight:700;
+  background:var(--bg5);border:1px solid var(--br2);border-radius:3px;
+  padding:2px 5px;color:var(--t3);margin:1px 2px 1px 0;letter-spacing:.04em;
+}
+.pack-tag.ok{background:rgba(61,184,112,.08);border-color:rgba(61,184,112,.25);color:var(--green)}
+.pack-tag.missing{background:rgba(224,72,72,.08);border-color:rgba(224,72,72,.25);color:var(--red)}
+.pack-actions{display:flex;gap:6px;flex-shrink:0}
+
+/* ─── FILE BROWSER ─────────────────────────────────────────────────────────── */
+.file-list{max-height:240px;overflow-y:auto;margin-top:8px}
+.file-item{
+  display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;
+  font-family:var(--mono);font-size:11px;color:var(--t2);transition:background .15s;
+  cursor:pointer;
+}
+.file-item:hover{background:var(--bg3);color:var(--t)}
+.file-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.file-dot.step{background:#6B8BFF}.file-dot.done{background:var(--green)}.file-dot.new{background:var(--y)}
+.file-name{flex:1}
+.file-type{font-size:9px;color:var(--t3);border:1px solid var(--br);border-radius:2px;padding:1px 4px}
+
+/* ─── STATUS BAR ───────────────────────────────────────────────────────────── */
+.status-bar{
+  flex-shrink:0;padding:8px 28px;border-top:1px solid var(--br);
+  background:var(--bg2);display:flex;align-items:center;gap:16px;
+  font-family:var(--mono);font-size:10px;color:var(--t3);letter-spacing:.06em;
+}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0}
+.status-dot.warn{background:var(--y)}.status-dot.err{background:var(--red)}
+#saveStatus{color:var(--t2);transition:color .3s}
+
+/* ─── TOAST ────────────────────────────────────────────────────────────────── */
+#toast{
+  position:fixed;bottom:24px;right:24px;z-index:9999;
+  background:var(--bg3);border:1px solid var(--br3);border-radius:8px;
+  padding:12px 18px;font-family:var(--mono);font-size:12px;font-weight:700;
+  color:var(--t);box-shadow:0 8px 30px rgba(0,0,0,.5);
+  transform:translateY(20px);opacity:0;transition:all .25s;pointer-events:none;
+}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.success{border-color:rgba(61,184,112,.35);color:var(--green)}
+#toast.warn{border-color:rgba(245,194,24,.35);color:var(--y)}
+
+/* ─── OVERVIEW STATS ───────────────────────────────────────────────────────── */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.stat-cell{
+  background:var(--bg2);border:1px solid var(--br2);border-radius:10px;
+  padding:18px;text-align:center;
+}
+.stat-val{font-family:var(--mono);font-size:28px;font-weight:800;color:var(--y);margin-bottom:4px}
+.stat-lbl{font-size:12px;color:var(--t2)}
+
+/* ─── SECTION LABEL ────────────────────────────────────────────────────────── */
+.sec-label{
+  font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--t3);margin:24px 0 12px;
+}
+.sec-label:first-child{margin-top:0}
+
+/* ─── PIN CHANGE ───────────────────────────────────────────────────────────── */
+.pin-row{display:flex;gap:10px;align-items:flex-end}
+.pin-row .field{flex:1;margin-bottom:0}
+</style>
+</head>
+<body>
+
+<!-- ─── PIN GATE ──────────────────────────────────────────────────────────── -->
+<div id="gate">
+  <div class="gate-box">
+    <div class="gate-logo">TASK<span>FM</span></div>
+    <p class="gate-sub">Admin Dashboard — restricted access</p>
+    <label class="gate-label">Access PIN</label>
+    <input class="gate-input" type="password" id="pinInput" maxlength="8" placeholder="····" autocomplete="off" onkeydown="if(event.key==='Enter')checkPin()"/>
+    <div class="gate-err" id="pinErr"></div>
+    <button class="gate-btn" onclick="checkPin()">Enter Dashboard →</button>
+  </div>
+</div>
+
+<!-- ─── APP ───────────────────────────────────────────────────────────────── -->
+<div id="app">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-logo">TASK<span>FM</span><span class="sidebar-badge">ADMIN</span></div>
+    <div class="nav-section">Main</div>
+    <div class="nav-item active" onclick="nav('overview',this)"><span class="ni">◈</span> Overview</div>
+    <div class="nav-item" onclick="nav('content',this)"><span class="ni">✏</span> Content</div>
+    <div class="nav-section">Sound</div>
+    <div class="nav-item" onclick="nav('packs',this)"><span class="ni">🎧</span> Sound Packs</div>
+    <div class="nav-item" onclick="nav('config',this)"><span class="ni">⚙</span> Config</div>
+    <div class="nav-section">Access</div>
+    <div class="nav-item" onclick="nav('security',this)"><span class="ni">🔒</span> Security</div>
+    <div class="sidebar-footer">v1.0.0 · local dashboard</div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="topbarTitle">Overview</div>
+      <div class="topbar-actions">
+        <button class="btn" onclick="previewSite()">Preview Site ↗</button>
+        <button class="btn primary" onclick="saveAll()">Save Changes</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ── OVERVIEW ──────────────────────────────────────────────────── -->
+      <div class="panel active" id="panel-overview">
+        <div class="stats-row">
+          <div class="stat-cell"><div class="stat-val" id="st-packs">3</div><div class="stat-lbl">Sound Packs</div></div>
+          <div class="stat-cell"><div class="stat-val" id="st-files">0</div><div class="stat-lbl">Sound Files</div></div>
+          <div class="stat-cell"><div class="stat-val" id="st-fields">0</div><div class="stat-lbl">Content Fields</div></div>
+          <div class="stat-cell"><div class="stat-val" id="st-overrides">0</div><div class="stat-lbl">Active Overrides</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Sound Packs Status</div>
+          <div id="overviewPacks"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Quick Actions</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn" onclick="nav('content',document.querySelector('[onclick*=content]'))">Edit Content →</button>
+            <button class="btn" onclick="nav('packs',document.querySelector('[onclick*=packs]'))">Manage Packs →</button>
+            <button class="btn" onclick="nav('config',document.querySelector('[onclick*=config]'))">Adjust Config →</button>
+            <button class="btn danger" onclick="resetAll()">Reset All Overrides</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── CONTENT ───────────────────────────────────────────────────── -->
+      <div class="panel" id="panel-content">
+        <div class="card">
+          <div class="card-title">Hero Section <span class="ct-badge">TEXT</span></div>
+          <div class="field-row">
+            <div class="field">
+              <div class="field-label">Tag Line <span class="field-lang">EN</span></div>
+              <input type="text" id="c-heroTagEn" placeholder="menu bar app · mac & windows"/>
+            </div>
+            <div class="field">
+              <div class="field-label">Tag Line <span class="field-lang">AR</span></div>
+              <input type="text" id="c-heroTagAr" placeholder="تطبيق شريط القوائم · mac و windows" dir="rtl"/>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <div class="field-label">Headline <span class="field-lang">EN</span></div>
+              <input type="text" id="c-heroLineEn" placeholder="Add tasks. Check them off. Hear what happens."/>
+            </div>
+            <div class="field">
+              <div class="field-label">Headline <span class="field-lang">AR</span></div>
+              <input type="text" id="c-heroLineAr" placeholder="أضف. اكمل. اسمع." dir="rtl"/>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <div class="field-label">Subheadline <span class="field-lang">EN</span></div>
+              <textarea id="c-heroSubEn" placeholder="A tiny checklist app that lives in your menu bar..."></textarea>
+            </div>
+            <div class="field">
+              <div class="field-label">Subheadline <span class="field-lang">AR</span></div>
+              <textarea id="c-heroSubAr" placeholder="تطبيق قائمة مهام صغير..." dir="rtl"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Statement Section <span class="ct-badge">TEXT</span></div>
+          <div class="field-row">
+            <div class="field">
+              <div class="field-label">Big Headline <span class="field-lang">EN</span></div>
+              <textarea id="c-stmtBigEn" placeholder="Every to-do app does the same thing. We added sound."></textarea>
+            </div>
+            <div class="field">
+              <div class="field-label">Big Headline <span class="field-lang">AR</span></div>
+              <textarea id="c-stmtBigAr" placeholder="كل تطبيقات المهام بتعمل نفس الحاجة. إحنا أضفنا الصوت." dir="rtl"></textarea>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <div class="field-label">Body <span class="field-lang">EN</span></div>
+              <textarea id="c-stmtBodyEn" placeholder="Not background music..."></textarea>
+            </div>
+            <div class="field">
+              <div class="field-label">Body <span class="field-lang">AR</span></div>
+              <textarea id="c-stmtBodyAr" dir="rtl"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Download Section <span class="ct-badge">TEXT</span></div>
+          <div class="field-row">
+            <div class="field">
+              <div class="field-label">Title <span class="field-lang">EN</span></div>
+              <input type="text" id="c-dlTitleEn" placeholder="Download. It's free."/>
+            </div>
+            <div class="field">
+              <div class="field-label">Title <span class="field-lang">AR</span></div>
+              <input type="text" id="c-dlTitleAr" placeholder="حمّله. مجاني." dir="rtl"/>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <div class="field-label">Subtitle <span class="field-lang">EN</span></div>
+              <textarea id="c-dlSubEn" placeholder="No account. No subscription..."></textarea>
+            </div>
+            <div class="field">
+              <div class="field-label">Subtitle <span class="field-lang">AR</span></div>
+              <textarea id="c-dlSubAr" dir="rtl"></textarea>
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-label">DMG File Path</div>
+            <input type="text" id="c-dmgPath" placeholder="TASKFM_macOS.dmg"/>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Quote Section <span class="ct-badge">TEXT</span></div>
+          <div class="field-row">
+            <div class="field">
+              <div class="field-label">Quote <span class="field-lang">EN</span></div>
+              <textarea id="c-quoteEn" placeholder="We wanted to make the small things feel good."></textarea>
+            </div>
+            <div class="field">
+              <div class="field-label">Quote <span class="field-lang">AR</span></div>
+              <textarea id="c-quoteAr" dir="rtl"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── PACKS ──────────────────────────────────────────────────────── -->
+      <div class="panel" id="panel-packs">
+        <div class="card">
+          <div class="card-title">Active Packs</div>
+          <div id="packsList"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Default Pack on Load</div>
+          <div class="field">
+            <div class="field-label">Default Pack</div>
+            <select id="c-defaultPack">
+              <option value="bahgt">Bahgat Pack</option>
+              <option value="elsisi">Sisi Pack</option>
+              <option value="elguyar">El Guyar Pack</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">File Browser</div>
+          <div class="field">
+            <div class="field-label">View Pack</div>
+            <select id="fileBrowserPack" onchange="renderFileBrowser()">
+              <option value="bahgt">Bahgat Pack</option>
+              <option value="elsisi">Sisi Pack</option>
+              <option value="elguyar">El Guyar Pack</option>
+            </select>
+          </div>
+          <div class="file-list" id="fileBrowser"></div>
+        </div>
+      </div>
+
+      <!-- ── CONFIG ────────────────────────────────────────────────────── -->
+      <div class="panel" id="panel-config">
+        <div class="card">
+          <div class="card-title">Visuals</div>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-name">Orbit Animation</div>
+              <div class="toggle-desc">Show drifting task icons in the hero section</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="cfg-orbitEnabled" checked/>
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-name">Scroll Reveal Animations</div>
+              <div class="toggle-desc">Fade-in sections on scroll</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="cfg-revealEnabled" checked/>
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Audio</div>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-name">Sound Enabled by Default</div>
+              <div class="toggle-desc">Whether sound is on when the page loads</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="cfg-soundDefault" checked/>
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+          <div class="field" style="margin-top:16px">
+            <div class="field-label">Default Volume (0–100)</div>
+            <input type="number" id="cfg-volume" min="0" max="100" value="75" style="max-width:120px"/>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Site Meta</div>
+          <div class="field-row">
+            <div class="field">
+              <div class="field-label">Page Title</div>
+              <input type="text" id="cfg-pageTitle" placeholder="TASK FM — Your checklist, alive."/>
+            </div>
+            <div class="field">
+              <div class="field-label">Version String</div>
+              <input type="text" id="cfg-version" placeholder="1.0.0"/>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SECURITY ───────────────────────────────────────────────────── -->
+      <div class="panel" id="panel-security">
+        <div class="card">
+          <div class="card-title">Change Admin PIN</div>
+          <p style="font-size:13px;color:var(--t2);margin-bottom:18px;line-height:1.6">Change the PIN used to access this dashboard. The PIN is stored in your browser's localStorage.</p>
+          <div class="pin-row">
+            <div class="field">
+              <div class="field-label">Current PIN</div>
+              <input type="password" id="sec-current" placeholder="Current PIN" autocomplete="off"/>
+            </div>
+            <div class="field">
+              <div class="field-label">New PIN</div>
+              <input type="password" id="sec-new" placeholder="New PIN" autocomplete="off"/>
+            </div>
+            <div class="field">
+              <div class="field-label">Confirm New PIN</div>
+              <input type="password" id="sec-confirm" placeholder="Confirm" autocomplete="off"/>
+            </div>
+            <button class="btn primary" style="margin-bottom:16px;white-space:nowrap" onclick="changePIN()">Update PIN</button>
+          </div>
+          <div id="sec-msg" style="font-family:var(--mono);font-size:12px;height:18px"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Session</div>
+          <div class="toggle-row">
+            <div class="toggle-info">
+              <div class="toggle-name">Remember session</div>
+              <div class="toggle-desc">Stay logged in across browser refreshes (sessionStorage)</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="cfg-rememberSession" checked/>
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+          <div style="margin-top:16px">
+            <button class="btn danger" onclick="logout()">Log Out</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+
+    <div class="status-bar">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="saveStatus">All changes saved</span>
+      <span style="margin-left:auto">TASK FM Admin · <span id="envLabel">local</span></span>
+    </div>
+  </div><!-- /main -->
+
+</div><!-- /app -->
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════════
+
+const DEFAULT_PIN = '1234';
+const STORAGE_KEY = 'taskfm_admin';
+const SESSION_KEY = 'taskfm_session';
+
+// All sound files per pack (mirrors landing page PACK_POOLS)
+const PACK_FILES = {
+  bahgt: {
+    step: ['step-1.mp3'],
+    done: ['done-1.mp3','done-2.mp3','done-3.mp3'],
+    new:  ['new-1.mp3','new-2.mp3','new-3.mp3','new-4.mp3','new-5.mp3','new-6.mp3'],
+  },
+  elsisi: {
+    step: ['step-1.mp4','step-2.mp4','step-3.mp4','step-4.mp4','step-5.mp4','step-6.mp4','step-7.mp4','step-8.mp4'],
+    done: ['done-1.mp4','done-2.mp4','done-3.mp4','done-4.mp4','done-5.mp4','done-6.mp4','done-7.mp4'],
+    new:  ['new-1.mp4','new-2.mp4','new-3.mp4','new-4.mp4','new-5.mp4','new-6.mp4','new-7.mp4','new-8.mp4','new-9.mp4','new-10.mp4','new-11.mp4'],
+  },
+  elguyar: {
+    step: ['step-1.mp3','step-2.mp3','step-3.mp3','step-4.mp3'],
+    done: ['done-1.mp3','done-2.mp3','done-3.mp3','done-4.mp3'],
+    new:  ['new-1.mp3','new-2.mp3','new-3.mp3','new-4.mp3'],
+  },
+};
+
+const PACK_META = {
+  bahgt:   { icon:'🎙', label:'Bahgat Pack'   },
+  elsisi:  { icon:'⭐', label:'Sisi Pack'      },
+  elguyar: { icon:'🎸', label:'El Guyar Pack'  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════
+
+let cfg = {
+  content: {
+    heroTagEn:'', heroTagAr:'',
+    heroLineEn:'', heroLineAr:'',
+    heroSubEn:'', heroSubAr:'',
+    stmtBigEn:'', stmtBigAr:'',
+    stmtBodyEn:'', stmtBodyAr:'',
+    dlTitleEn:'', dlTitleAr:'',
+    dlSubEn:'', dlSubAr:'',
+    dmgPath:'', quoteEn:'', quoteAr:'',
+  },
+  packs: { bahgt:true, elsisi:true, elguyar:true },
+  config: {
+    orbitEnabled: true,
+    revealEnabled: true,
+    soundDefault: true,
+    volume: 75,
+    defaultPack: 'bahgt',
+    pageTitle: '',
+    version: '1.0.0',
+    rememberSession: true,
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════════════════════════
+
+function getStoredPIN() {
+  return localStorage.getItem('taskfm_pin') || DEFAULT_PIN;
+}
+
+function checkPin() {
+  const val = document.getElementById('pinInput').value;
+  if (val === getStoredPIN()) {
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('app').classList.add('show');
+    sessionStorage.setItem(SESSION_KEY, '1');
+    loadCfg();
+    renderAll();
+  } else {
+    const err = document.getElementById('pinErr');
+    err.textContent = 'Incorrect PIN.';
+    setTimeout(() => { err.textContent = ''; }, 2200);
+    document.getElementById('pinInput').value = '';
+    document.getElementById('pinInput').focus();
+  }
+}
+
+function changePIN() {
+  const cur = document.getElementById('sec-current').value;
+  const nw  = document.getElementById('sec-new').value;
+  const con = document.getElementById('sec-confirm').value;
+  const msg = document.getElementById('sec-msg');
+  if (cur !== getStoredPIN()) { msg.style.color='var(--red)'; msg.textContent='Current PIN is wrong.'; return; }
+  if (!nw || nw.length < 4)   { msg.style.color='var(--red)'; msg.textContent='New PIN must be at least 4 characters.'; return; }
+  if (nw !== con)              { msg.style.color='var(--red)'; msg.textContent='PINs do not match.'; return; }
+  localStorage.setItem('taskfm_pin', nw);
+  msg.style.color = 'var(--green)';
+  msg.textContent = 'PIN updated successfully.';
+  document.getElementById('sec-current').value = '';
+  document.getElementById('sec-new').value = '';
+  document.getElementById('sec-confirm').value = '';
+  setTimeout(() => { msg.textContent = ''; }, 3000);
+}
+
+function logout() {
+  sessionStorage.removeItem(SESSION_KEY);
+  location.reload();
+}
+
+// Auto-login if session active
+if (sessionStorage.getItem(SESSION_KEY)) {
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('app').classList.add('show');
+  loadCfg();
+  // Wait for DOM to be ready before rendering
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', renderAll);
+  } else {
+    renderAll();
+  }
+}
+
+document.getElementById('pinInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') checkPin();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STORAGE
+// ═══════════════════════════════════════════════════════════════════════════
+
+function loadCfg() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Deep merge
+      Object.keys(cfg).forEach(section => {
+        if (parsed[section]) Object.assign(cfg[section], parsed[section]);
+      });
+    }
+  } catch (e) { /* ignore */ }
+}
+
+function saveCfg() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+  // Also save a version the landing page can read
+  localStorage.setItem('taskfm_site_config', JSON.stringify(cfg));
+}
+
+function saveAll() {
+  // Read all form values into cfg
+  // Content
+  Object.keys(cfg.content).forEach(k => {
+    const el = document.getElementById('c-' + k);
+    if (el) cfg.content[k] = el.value.trim();
+  });
+  // Config
+  cfg.config.orbitEnabled   = document.getElementById('cfg-orbitEnabled')?.checked ?? true;
+  cfg.config.revealEnabled  = document.getElementById('cfg-revealEnabled')?.checked ?? true;
+  cfg.config.soundDefault   = document.getElementById('cfg-soundDefault')?.checked ?? true;
+  cfg.config.rememberSession= document.getElementById('cfg-rememberSession')?.checked ?? true;
+  cfg.config.volume         = parseInt(document.getElementById('cfg-volume')?.value) || 75;
+  cfg.config.defaultPack    = document.getElementById('c-defaultPack')?.value || 'bahgt';
+  cfg.config.pageTitle      = document.getElementById('cfg-pageTitle')?.value?.trim() || '';
+  cfg.config.version        = document.getElementById('cfg-version')?.value?.trim() || '1.0.0';
+
+  saveCfg();
+  updateOverrideCount();
+  showToast('Changes saved', 'success');
+  setStatus('All changes saved', 'ok');
+}
+
+function resetAll() {
+  if (!confirm('Reset all content overrides? The landing page will use its default text.')) return;
+  Object.keys(cfg.content).forEach(k => { cfg.content[k] = ''; });
+  saveCfg();
+  loadFormValues();
+  updateOverrideCount();
+  showToast('Overrides reset', 'warn');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════════════════════
+
+function renderAll() {
+  loadFormValues();
+  renderOverviewPacks();
+  renderPacksList();
+  renderFileBrowser();
+  updateStats();
+}
+
+function loadFormValues() {
+  Object.keys(cfg.content).forEach(k => {
+    const el = document.getElementById('c-' + k);
+    if (el) el.value = cfg.content[k] || '';
+  });
+  const dp = document.getElementById('c-defaultPack');
+  if (dp) dp.value = cfg.config.defaultPack || 'bahgt';
+
+  const oe = document.getElementById('cfg-orbitEnabled');
+  if (oe) oe.checked = cfg.config.orbitEnabled !== false;
+  const re = document.getElementById('cfg-revealEnabled');
+  if (re) re.checked = cfg.config.revealEnabled !== false;
+  const sd = document.getElementById('cfg-soundDefault');
+  if (sd) sd.checked = cfg.config.soundDefault !== false;
+  const rs = document.getElementById('cfg-rememberSession');
+  if (rs) rs.checked = cfg.config.rememberSession !== false;
+  const vol = document.getElementById('cfg-volume');
+  if (vol) vol.value = cfg.config.volume ?? 75;
+  const pt = document.getElementById('cfg-pageTitle');
+  if (pt) pt.value = cfg.config.pageTitle || '';
+  const ver = document.getElementById('cfg-version');
+  if (ver) ver.value = cfg.config.version || '1.0.0';
+}
+
+function renderOverviewPacks() {
+  const el = document.getElementById('overviewPacks');
+  if (!el) return;
+  el.innerHTML = Object.keys(PACK_FILES).map(packId => {
+    const meta  = PACK_META[packId];
+    const files = PACK_FILES[packId];
+    const total = Object.values(files).flat().length;
+    return `
+      <div class="pack-row">
+        <div class="pack-icon">${meta.icon}</div>
+        <div class="pack-info">
+          <div class="pack-name">${meta.label}</div>
+          <div class="pack-meta">${total} files · ${Object.values(files).flat().filter(f=>f.endsWith('.mp3')?'mp3':'mp4').length > 0 ? 'MP3/MP4' : ''}</div>
+          <div class="pack-sounds">
+            <span class="pack-tag ok">step ×${files.step.length}</span>
+            <span class="pack-tag ok">done ×${files.done.length}</span>
+            <span class="pack-tag ok">new ×${files.new.length}</span>
+          </div>
+        </div>
+        <div class="pack-actions">
+          <button class="btn" onclick="previewPackSound('${packId}')">▶ Preview</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderPacksList() {
+  const el = document.getElementById('packsList');
+  if (!el) return;
+  el.innerHTML = Object.keys(PACK_FILES).map(packId => {
+    const meta  = PACK_META[packId];
+    const files = PACK_FILES[packId];
+    const total = Object.values(files).flat().length;
+    const enabled = cfg.packs[packId] !== false;
+    return `
+      <div class="pack-row">
+        <div class="pack-icon">${meta.icon}</div>
+        <div class="pack-info">
+          <div class="pack-name">${meta.label}</div>
+          <div class="pack-meta">${total} sound files</div>
+        </div>
+        <div class="pack-actions">
+          <button class="btn" onclick="previewPackSound('${packId}')">▶ Play</button>
+          <label class="toggle" style="margin:0 6px">
+            <input type="checkbox" ${enabled?'checked':''} onchange="cfg.packs['${packId}']=this.checked;saveCfg()"/>
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderFileBrowser() {
+  const packId = document.getElementById('fileBrowserPack')?.value || 'bahgt';
+  const el     = document.getElementById('fileBrowser');
+  if (!el) return;
+  const files = PACK_FILES[packId];
+  const rows  = [];
+  ['step','done','new'].forEach(type => {
+    files[type].forEach(f => {
+      rows.push(`
+        <div class="file-item" onclick="previewFile('sounds/${packId}/${f}')">
+          <div class="file-dot ${type}"></div>
+          <div class="file-name">${f}</div>
+          <div class="file-type">${type}</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--t3)">▶</div>
+        </div>`);
+    });
+  });
+  el.innerHTML = rows.join('');
+}
+
+function updateStats() {
+  document.getElementById('st-files').textContent =
+    Object.values(PACK_FILES).reduce((a,p) => a + Object.values(p).flat().length, 0);
+  const fields = Object.keys(cfg.content).length;
+  document.getElementById('st-fields').textContent = fields;
+  updateOverrideCount();
+}
+
+function updateOverrideCount() {
+  const count = Object.values(cfg.content).filter(v => v && v.trim()).length;
+  document.getElementById('st-overrides').textContent = count;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AUDIO PREVIEW
+// ═══════════════════════════════════════════════════════════════════════════
+
+let _previewAudio = null;
+const _previewHistory = {};
+
+function previewFile(path) {
+  if (_previewAudio) { _previewAudio.pause(); _previewAudio = null; }
+  _previewAudio = new Audio(path);
+  _previewAudio.volume = 0.7;
+  _previewAudio.play().catch(() => showToast('Cannot play: ' + path, 'warn'));
+}
+
+function previewPackSound(packId) {
+  const pool = Object.values(PACK_FILES[packId]).flat();
+  const last = _previewHistory[packId];
+  let idx;
+  do { idx = Math.floor(Math.random() * pool.length); } while (idx === last && pool.length > 1);
+  _previewHistory[packId] = idx;
+  previewFile(`sounds/${packId}/${pool[idx]}`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
+
+function nav(id, el) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('panel-' + id)?.classList.add('active');
+  el?.classList.add('active');
+  const titles = { overview:'Overview', content:'Content Editor', packs:'Sound Packs', config:'Configuration', security:'Security' };
+  document.getElementById('topbarTitle').textContent = titles[id] || id;
+  if (id === 'packs') { renderPacksList(); renderFileBrowser(); }
+}
+
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + type;
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.className = ''; }, 2500);
+}
+
+function setStatus(msg, level = 'ok') {
+  document.getElementById('saveStatus').textContent = msg;
+  const dot = document.getElementById('statusDot');
+  dot.className = 'status-dot' + (level === 'warn' ? ' warn' : level === 'err' ? ' err' : '');
+}
+
+function previewSite() {
+  window.open('index.html', '_blank');
+}
+
+// Mark unsaved on any input change
+document.addEventListener('input', e => {
+  if (e.target.closest('.content')) {
+    setStatus('Unsaved changes', 'warn');
+  }
+});
+</script>
+</body>
+</html>
