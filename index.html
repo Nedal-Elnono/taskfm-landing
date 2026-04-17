@@ -905,6 +905,138 @@ html.light .legal-body ul li { color:rgba(17,17,16,.75); }
 html.light .legal-body h2 { color:#111110; }
 html.light .legal-close { color:#5a5957;background:rgba(0,0,0,.05);border-color:rgba(0,0,0,.10); }
 html.light .legal-close:hover { color:#111110; }
+
+/* ═══ TABLET — 641–1024px ══════════════════════════════════════════ */
+@media (max-width:1024px) {
+  #topbar          { padding:18px 28px; }
+  .section         { padding:100px 32px; }
+  #s-demo          { padding:48px 32px 100px; }
+  #s-packs         { padding:200px 32px 100px; }
+  #s-dl            { padding:0 32px 64px; }
+  .dl-box          { padding:72px 44px; }
+  #tuner-wrap      { padding:56px 48px 52px; }
+  footer           { padding:28px 32px; }
+}
+
+/* ═══ MOBILE — ≤640px ══════════════════════════════════════════════ */
+@media (max-width:640px) {
+
+  /* ── Topbar ── */
+  #topbar { padding:14px 18px; }
+  .nav-btn { padding:8px 14px; font-size:10px; }
+  #theme-toggle { padding:6px 8px; }
+
+  /* ── Hero / scene ── */
+  .hero-sub    { font-size:14px; padding:0 4px; line-height:1.6; }
+  .hero-cta    { margin-top:24px; gap:10px; }
+  .btn-dl      { padding:13px 20px; min-height:48px; }
+  .scroll-hint { margin-top:28px; }
+  #scene-content { width:min(520px,92vw); }
+
+  /* ── Surround words — pull into viewport on narrow screens ── */
+  .surround-word { font-size:clamp(14px,4.5vw,22px); }
+  #sw-top    { bottom:calc(50vh + 170px); }
+  #sw-bottom { top:calc(50vh + 170px); }
+  #sw-right  { left:calc(50vw + 120px); }
+  #sw-right.sw-on { opacity:1; transform:translateY(-50%) translateX(0); }
+  #sw-left   { right:calc(50vw + 120px); }
+  #sw-left.sw-on  { opacity:1; transform:translateY(-50%) translateX(0); }
+
+  /* ── Scene bridge ── */
+  #scene-bridge { height:40vh; }
+
+  /* ── Demo section ── */
+  #s-demo { padding:40px 18px 60px; }
+  #s-demo > div:first-child { margin-bottom:28px; }
+  .demo-layout {
+    grid-template-columns:1fr;
+    gap:16px;
+  }
+  .demo-model-slot { min-height:220px; }
+  .demo-app-side   { width:100%; }
+  .demo-hint       { font-size:10px; margin-top:12px; }
+
+  /* ── App window ── */
+  .app-window   { border-radius:12px; }
+  .app-body     { padding:16px 14px 20px; }
+  .app-heading  { font-size:18px; margin-bottom:14px; }
+  .app-add-input{ font-size:11px; }
+
+  /* ── Packs section ── */
+  #s-packs { padding:100px 18px 64px; }
+  .section-title  { margin-bottom:32px; }
+  #s-packs .section-label { font-size:11px; letter-spacing:.18em; margin-bottom:16px; }
+  .pack-card { height:200px; border-radius:12px; }
+  .packs-row { gap:14px; }
+  .pack-name { font-size:18px; }
+
+  /* ── Download section ── */
+  #s-dl    { padding:0 18px 52px; }
+  .dl-box  {
+    padding:48px 24px 40px;
+    border-radius:16px;
+  }
+  .dl-sub  { font-size:14px; margin-bottom:28px; }
+  .dl-btns { gap:10px; flex-direction:column; align-items:center; }
+  .dl-btns .btn-dl { width:100%; max-width:280px; justify-content:center; }
+  .dl-note { font-size:10px; margin-top:14px; }
+
+  /* ── Tuner / Contact section ── */
+  #s-tuner { padding:40px 0 0; }
+  #tuner-wrap { padding:36px 20px 40px; }
+  .tuner-eyebrow { font-size:9px; letter-spacing:.18em; margin-bottom:24px; }
+  #tuner-display { margin-bottom:32px; min-height:80px; }
+  #tuner-display-title {
+    font-size:clamp(32px,8vw,56px);
+    white-space:normal;
+    word-break:break-word;
+    margin-bottom:10px;
+  }
+  #tuner-display-sub { font-size:13px; }
+  #tuner-readout     { font-size:10px; letter-spacing:.10em; margin-bottom:14px; }
+  #tuner-rail        { margin-bottom:12px; }
+  #tuner-handle      { height:24px; }
+  #tuner-handle.locked { height:32px; }
+  .tuner-tick-freq   { font-size:9px; }
+
+  /* ── Footer ── */
+  footer {
+    padding:24px 18px;
+    font-size:11px;
+    line-height:2;
+    letter-spacing:.03em;
+  }
+
+  /* ── Download modal ── */
+  .modal-box   { padding:36px 22px 30px; border-radius:16px; }
+  .modal-title { font-size:18px; }
+  .modal-sub   { font-size:13px; margin-bottom:24px; }
+  .modal-btn   { padding:13px 16px; }
+  .modal-btn-text strong { font-size:13px; }
+
+  /* ── Legal modal ── */
+  .legal-box    { border-radius:18px; }
+  .legal-header { padding:24px 20px 18px; }
+  .legal-body   { padding:22px 20px 32px; }
+  .legal-body h2      { font-size:15px; }
+  .legal-body p,
+  .legal-body ul li   { font-size:13px; }
+  .legal-close { top:12px; right:12px; }
+}
+
+/* ═══ SMALL MOBILE — ≤380px ════════════════════════════════════════ */
+@media (max-width:380px) {
+  #topbar { padding:12px 14px; }
+  #s-packs  { padding:80px 14px 52px; }
+  #s-dl     { padding:0 14px 44px; }
+  .dl-box   { padding:40px 18px 36px; }
+  #tuner-wrap { padding:28px 14px 32px; }
+  #tuner-display-title { font-size:clamp(28px,8vw,44px); }
+  footer    { padding:20px 14px; }
+  .modal-box { padding:28px 16px 24px; }
+  .legal-body { padding:18px 16px 24px; }
+  .legal-header { padding:20px 16px 16px; }
+}
 </style>
 </head>
 <body class="loading">
